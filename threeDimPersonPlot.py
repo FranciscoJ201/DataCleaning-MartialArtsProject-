@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (needed for 3D)
 from matplotlib.widgets import Button, Slider, TextBox
 from JSON_FILES.JSONREAD import filecleanup, filecleanupsingle
+from LengthPrediction import distTwoPoints # Import the distance function
 
 
 
@@ -139,7 +140,7 @@ class Pose3DPlayer:
 
 
         #CUSTOM CONNECTIONS between keypoints
-        self.custom_line, = self.ax.plot([],[],[], color = 'black',linewidth=3)
+        self.custom_line, = self.ax.plot([],[],[], color = 'red',linewidth=5)
         self.custom_line_points = None #INDICES TO CONNECT LATER
 
 

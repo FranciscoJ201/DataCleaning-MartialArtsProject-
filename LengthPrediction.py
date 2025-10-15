@@ -73,25 +73,3 @@ def calc_limb_lengths(json_path, target_idx, edges = SMPL24_EDGES):
     return lengths
 
 
-# if __name__ == '__main__':
-
-#     trgt_idx = 1
-
-#     limb_lengths = calc_limb_lengths(JSON_PATH, target_idx=trgt_idx)
-
-#     right_leg_length = limb_lengths.get((16,18),0) + limb_lengths.get((18,20),0) + limb_lengths.get((20,22),0)
-#     print(f"\nExample: Total estimated right leg length: {right_leg_length:.2f}")
-
-
-#     viewer = Pose3DPlayer(
-#             json_path=JSON_PATH,
-#             target_idx=trgt_idx,        # or an integer track id, e.g., 0 or 1
-#             edges=SMPL24_EDGES,
-#             fps=30,
-#             fixed_limits= lim,     
-#             auto_scale_margin=1.3,  # enlarge the autoscaled cube a bit 1.3
-#             point_size=40
-#         )
-#     viewer.connect_points(10,3)
-#     viewer.run()
-    
