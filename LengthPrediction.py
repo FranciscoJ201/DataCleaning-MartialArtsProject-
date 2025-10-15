@@ -1,5 +1,6 @@
-from threeDimPersonPlot import Pose3DPlayer,SMPL24_EDGES,lim,load_frames,select_person_entry,get_xyz_from_entry
+from threeDimPlot import load_frames,select_person_entry,get_xyz_from_entry
 import numpy as np
+from util import distTwoPoints,SMPL24_EDGES,lim
 #Key Aspects of the Script:
 #1.) Length/Distance tracking between different body parts. 
 #2.) 3d View Just like in the 3D single person plot script. 
@@ -10,13 +11,7 @@ import numpy as np
 #2.) Keypoint JSON input 
 JSON_PATH = '/Users/franciscojimenez/Desktop/3d.json'
 
-def distTwoPoints(x1,y1,z1,x2,y2,z2):
-    """
-    This function is for calculating the euclidean distance between two 3D keypoints
-    from an alphapose (or related software) json output
-    sqrt[(x2-x1)^2 + (y2-y1)^2 + ..... dimensions
-    """
-    return np.sqrt( (x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2 )
+
 
 def calc_limb_lengths(json_path, target_idx, edges = SMPL24_EDGES):
     """

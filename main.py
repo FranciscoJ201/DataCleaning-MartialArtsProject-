@@ -1,9 +1,9 @@
-from threeDimPersonPlot import Pose3DPlayer,SMPL24_EDGES,lim 
+from threeDimPlot import Pose3DPlayer
 from LengthPrediction import calc_limb_lengths
 import tkinter as tk
 from tkinter import filedialog, simpledialog
 import os
-
+from util import SMPL24_EDGES,lim
 SMPL_BODY_PARTS = {
         0: "Pelvis",
         1: "Left Hip",

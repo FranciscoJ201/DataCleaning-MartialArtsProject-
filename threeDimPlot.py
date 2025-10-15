@@ -4,33 +4,12 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (needed for 3D)
 from matplotlib.widgets import Button, Slider, TextBox
 from JSON_FILES.JSONREAD import filecleanup, filecleanupsingle
-from LengthPrediction import distTwoPoints # Import the distance function
+from util import distTwoPoints,lim,SMPL24_EDGES # Import the distance function
 
 
 
-#CONSTS ---------
-lim = (-1.5,1.5)
-JSON_PATH = "/Users/franciscojimenez/Desktop/3d.json"
-#repaired on desktop^
-# lim = None
-#----------------
 
-# ----------------------------
-# Skeleton edges (COCO-17 default; swap to SMPL24 if you prefer)
-# ----------------------------
-COCO17_EDGES = [
-    (0,1),(0,2),(1,3),(2,4),
-    (0,5),(0,6),(5,7),(7,9),
-    (6,8),(8,10),(5,11),(6,12),
-    (11,13),(13,15),(12,14),(14,16)
-]
-SMPL24_EDGES = [
-    (0,1),(1,4),(4,7),(7,10),
-    (0,2),(2,5),(5,8),(8,11),
-    (0,3),(3,6),(6,9),(9,12),(12,15),
-    (12,13),(13,16),(16,18),(18,20),(20,22),
-    (12,14),(14,17),(17,19),(19,21),(21,23)
-]
+
 
 def frame_number(k: str) -> int:
     base = os.path.splitext(k)[0]
@@ -143,7 +122,7 @@ class Pose3DPlayer:
         self.custom_line, = self.ax.plot([],[],[], color = 'red',linewidth=5)
         self.custom_line_points = None #INDICES TO CONNECT LATER
 
-
+        self.custom_line_label = self.ax.text(0,0,0,"", color="red",fontsize=12)
 
 
         # axes limits
@@ -273,14 +252,7 @@ class Pose3DPlayer:
     def _on_fps_changed(self, val):
         self.fps = int(val)
         self.interval = int(1000 / self.fps)
-        # restart timer if currently playing so new interval takes effect
-        if self.playing:
-            self.timer.stop()
-            self.timer = self.fig.canvas.new_timer(interval=self.interval)
-            self.timer.add_callback(self._on_timer)
-            self.timer.start()
-        # (Optional) reflect FPS in the title
-        # self._set_title(self.i)
+        self.timer.interval = self.interval        
 
     def _on_timer(self):
         if not self.playing:
@@ -345,6 +317,7 @@ class Pose3DPlayer:
             self.fig.canvas.draw_idle()
 
             self.custom_line.set_data_3d([],[],[])
+            self.custom_line_label.set_text("")
             self.fig.canvas.draw_idle()
             return
 
@@ -362,9 +335,23 @@ class Pose3DPlayer:
         if self.custom_line_points:
             a,b = self.custom_line_points
             if a < len(x) and b < len(x):
+                # Update the custom line
                 self.custom_line.set_data_3d([x[a], x[b]], [y[a], y[b]], [z[a], z[b]])
+                
+                # Calculate the distance
+                distance = distTwoPoints(x[a], y[a], z[a], x[b], y[b], z[b])
+                
+                # Calculate the midpoint for the text label
+                mid_x = (x[a] + x[b]) / 2
+                mid_y = (y[a] + y[b]) / 2
+                mid_z = (z[a] + z[b]) / 2
+                
+                # Update the text label
+                self.custom_line_label.set_position((mid_x, mid_y, mid_z))
+                self.custom_line_label.set_text(f"{distance:.2f}")
             else:
-                self.custom_line.set_data_3d([],[],[])
+                self.custom_line.set_data_3d([], [], [])
+                self.custom_line_label.set_text("") # Clear the text label
 
 
 
@@ -396,18 +383,3 @@ class Pose3DPlayer:
         self._draw_frame(self.i)
         plt.show()
 
-if __name__ == "__main__":
-    # Example usage:
-    # - Set json_path to your AlphaPose 3D output that contains 'pred_xyz_jts'
-    # - Optionally set target_idx to a specific track id after running your repair step
-    
-    viewer = Pose3DPlayer(
-        json_path=JSON_PATH,
-        target_idx=1,        # or an integer track id, e.g., 0 or 1
-        edges=SMPL24_EDGES,
-        fps=30,
-        fixed_limits= lim,     
-        auto_scale_margin=1.3,  # enlarge the autoscaled cube a bit
-        point_size=40
-    )
-    viewer.run()
