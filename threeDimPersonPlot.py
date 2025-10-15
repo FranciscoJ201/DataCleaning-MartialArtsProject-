@@ -134,6 +134,17 @@ class Pose3DPlayer:
             if a < len(x) and b < len(x):
                 ln, = self.ax.plot([x[a], x[b]], [y[a], y[b]], [z[a], z[b]])
                 self.lines.append((ln, a, b))
+
+
+
+
+        #CUSTOM CONNECTIONS between keypoints
+        self.custom_line, = self.ax.plot([],[],[], color = 'black',linewidth=3)
+        self.custom_line_points = None #INDICES TO CONNECT LATER
+
+
+
+
         # axes limits
         self._set_limits(x, y, z)
 
@@ -146,6 +157,16 @@ class Pose3DPlayer:
         # timer for playback
         self.timer = self.fig.canvas.new_timer(interval=self.interval)
         self.timer.add_callback(self._on_timer)
+
+
+    #--------Connecting Keypoints-------
+    def connect_points(self,pointAIdx, pointBIdx):
+    #sets the indices for a line to be drawn between keypoints
+        self.custom_line_points = (pointAIdx,pointBIdx)
+        self._draw_frame(self.i)
+
+
+
 
     # ---------- Data helpers ----------
     def _get_xyz(self, idx):
@@ -321,6 +342,9 @@ class Pose3DPlayer:
             for ln, a, b in self.lines:
                 ln.set_data_3d([], [], [])
             self.fig.canvas.draw_idle()
+
+            self.custom_line.set_data_3d([],[],[])
+            self.fig.canvas.draw_idle()
             return
 
         # update scatter
@@ -333,6 +357,16 @@ class Pose3DPlayer:
                 ln.set_data_3d([x[a], x[b]], [y[a], y[b]], [z[a], z[b]])
             else:
                 ln.set_data_3d([], [], [])
+
+        if self.custom_line_points:
+            a,b = self.custom_line_points
+            if a < len(x) and b < len(x):
+                self.custom_line.set_data_3d([x[a], x[b]], [y[a], y[b]], [z[a], z[b]])
+            else:
+                self.custom_line.set_data_3d([],[],[])
+
+
+
 
         # update limits (comment out if you want them fixed from frame 0)
         if self.fixed_limits is None:

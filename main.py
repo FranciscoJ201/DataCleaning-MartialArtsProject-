@@ -1,0 +1,62 @@
+from threeDimPersonPlot import Pose3DPlayer,SMPL24_EDGES,lim 
+
+
+
+
+import tkinter as tk
+from tkinter import filedialog, simpledialog
+import os
+from threeDimPersonPlot import Pose3DPlayer, SMPL24_EDGES, lim
+
+def main():
+    """
+    Main function to handle file selection and user input for the 3D Pose Player.
+    """
+    # 1. File selection menu for JSON path
+    root = tk.Tk()
+    root.withdraw()  # Hide the main window
+    
+    # Open file dialog to select the JSON file
+    json_path = filedialog.askopenfilename(
+        title="Select your 3D keypoint JSON file",
+        filetypes=[("JSON files", "*.json")]
+    )
+    
+    # Check if a file was selected
+    if not json_path:
+        print("No file selected. Exiting.")
+        return
+        
+    print(f"Selected JSON file: {json_path}")
+    
+    # 2. Prompt box for target_idx
+    target_idx = simpledialog.askinteger(
+        "Input",
+        "Enter the target person's ID (e.g., 0, 1, 2...):",
+        parent=root,
+        minvalue=0
+    )
+
+    # Check if a target index was provided
+    if target_idx is None:
+        print("No target index provided. Exiting.")
+        return
+        
+    print(f"Selected target ID: {target_idx}")
+    
+    # Instantiate and run the 3D Pose Player with user inputs
+    viewer = Pose3DPlayer(
+        json_path=json_path,
+        target_idx=target_idx,
+        edges=SMPL24_EDGES,
+        fps=30,
+        fixed_limits=lim,
+        auto_scale_margin=1.3,
+        point_size=40
+    )
+    
+    viewer.run()
+
+if __name__ == "__main__":
+    main()
+    
