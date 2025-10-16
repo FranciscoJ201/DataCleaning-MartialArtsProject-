@@ -71,6 +71,9 @@ def main():
     a,b = stringAB.split(",")
     print(f"Selected points: {a,b} ")
     
+    #4. Prompt for fighter height to determine the real world length from keypoint to keypoint
+    fighter_height = simpledialog.askinteger("Input","Input an integer in INCHES (ex: 5 ft -> 60 inches)",parent=root,minvalue=0)
+    print(f"Selected Height: {fighter_height}")
     
     
     # Instantiate and run the 3D Pose Player with user inputs
