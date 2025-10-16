@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import filedialog, simpledialog
 import os
 from util import SMPL24_EDGES,lim
+import numpy as np
 SMPL_BODY_PARTS = {
         0: "Pelvis",
         1: "Left Hip",
@@ -86,11 +87,56 @@ def main():
         auto_scale_margin=1.3,
         point_size=40
     )
-    limb_lengths = calc_limb_lengths(json_path, target_idx=target_idx)
+    limb_lengths, coords = calc_limb_lengths(json_path, target_idx=target_idx)
 
-    right_leg_length = limb_lengths.get((16,18),0) + limb_lengths.get((18,20),0) + limb_lengths.get((20,22),0)
-    print(f"\nExample: Total estimated right leg length: {right_leg_length:.2f}")
-    
+
+
+    #Real world length calculation:
+    #Pelivis is 0, Head is 15, this is a chain from pelvis to head
+    if coords is not None and limb_lengths is not None:
+        # Unpack the Z-coordinates (vertical axis)
+        x, y, z = coords
+        
+        # Keypoint Indices for Head and Feet
+        HEAD_IDX = 15
+        LFOOT_IDX = 10
+        RFOOT_IDX = 11
+        
+        # Check if necessary keypoints exist
+        if all(idx < len(z) for idx in [HEAD_IDX, LFOOT_IDX, RFOOT_IDX]):
+            # 1. Get the Z-coordinate for the head
+            Z_Head = z[HEAD_IDX]
+            
+            # 2. Get the lowest Z-coordinate (the 'floor') from the two feet
+            Z_min_Feet = np.min([z[LFOOT_IDX], z[RFOOT_IDX]])
+            
+            # 3. Calculate the Vertical Keypoint Height (Height_KP)
+            Height_KP = np.abs( Z_Head - Z_min_Feet)
+            
+            print(f"\nCalculated Keypoint Vertical Height (Height_KP): {Height_KP:.2f}")
+            
+            # 4. Calculate the Scaling Factor (Inches per KP Unit)
+            if Height_KP > 0:
+                Scaling_Factor = fighter_height / Height_KP
+                print(f"Calculated Scaling Factor (Inches/KP Unit): {Scaling_Factor:.4f}")
+            else:
+                print("Error: Calculated Height_KP is zero or negative. Cannot determine Scaling Factor.")
+        else:
+            print("Error: Head or Foot keypoints are missing in the data.")
+    else:
+        print("Could not retrieve keypoint coordinates for scaling factor calculation.")
+
+
+
+
+
+
+
+
+
+
+    # right_leg_length = limb_lengths.get((16,18),0) + limb_lengths.get((18,20),0) + limb_lengths.get((20,22),0)
+    # print(f"\nExample: Total estimated right leg length: {right_leg_length:.2f}")
     viewer.connect_points(int(a),int(b))
     viewer.run()
 
