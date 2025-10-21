@@ -68,7 +68,8 @@ class Pose3DPlayer:
         fps=15,
         fixed_limits= lim,         # e.g., (-1000,1000) to force all axes same range
         auto_scale_margin=1.2,     # margin factor if not using fixed_limits
-        point_size=40
+        point_size=40,
+        sf_vertical = 0.0
     ):
         self.keys, self.frames = load_frames(json_path)
         if not self.keys:
@@ -81,6 +82,7 @@ class Pose3DPlayer:
         self.auto_scale_margin = auto_scale_margin
         self.point_size = point_size
         self.json_path = json_path
+        self.sf_vertical = sf_vertical
 
         # state
         self.i = 0
@@ -339,9 +341,10 @@ class Pose3DPlayer:
                 # Update the custom line
                 self.custom_line.set_data_3d([x[a], x[b]], [y[a], y[b]], [z[a], z[b]])
                 
-                # Calculate the distance
-                distance = distTwoPoints(x[a], y[a], z[a], x[b], y[b], z[b])
-                
+                # Calculate the distance KPS
+                kp_distance = distTwoPoints(x[a], y[a], z[a], x[b], y[b], z[b])
+                #calculate distance REAL LIFE
+                real_life_distance = kp_distance * self.sf_vertical
                 # Calculate the midpoint for the text label
                 mid_x = (x[a] + x[b]) / 2
                 mid_y = (y[a] + y[b]) / 2
@@ -349,7 +352,7 @@ class Pose3DPlayer:
                 
                 # Update the text label
                 self.custom_line_label.set_position((mid_x, mid_y, mid_z))
-                self.custom_line_label.set_text(f"{distance:.2f}")
+                self.custom_line_label.set_text(f"{real_life_distance:.2f}")
             else:
                 self.custom_line.set_data_3d([], [], [])
                 self.custom_line_label.set_text("") # Clear the text label

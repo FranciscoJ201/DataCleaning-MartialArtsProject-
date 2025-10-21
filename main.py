@@ -75,24 +75,9 @@ def main():
     #4. Prompt for fighter height to determine the real world length from keypoint to keypoint
     fighter_height = simpledialog.askinteger("Input","Input an integer in INCHES (ex: 5 ft -> 60 inches)",parent=root,minvalue=0)
     print(f"Selected Height: {fighter_height}")
-    
-    
-    # Instantiate and run the 3D Pose Player with user inputs
-    viewer = Pose3DPlayer(
-        json_path=json_path,
-        target_idx=target_idx,
-        edges=SMPL24_EDGES,
-        fps=30,
-        fixed_limits=lim,
-        auto_scale_margin=1.3,
-        point_size=40
-    )
+
     limb_lengths, coords = calc_limb_lengths(json_path, target_idx=target_idx)
-
-
-
-
-
+    
 
 
 
@@ -102,8 +87,6 @@ def main():
 
     #Real world length calculation:
     SF_vertical = 0.0
-
-
     #--------VERTICAL SCALING FACTOR-----------------
     if coords is not None and limb_lengths is not None:
         # Unpack the Z-coordinates (vertical axis)
@@ -134,7 +117,25 @@ def main():
     else:
         print("Could not retrieve keypoint coordinates for scaling factor calculation.")
 
-    #--------REAL WORLD LENGTH CALCULATION-------------
+
+
+
+
+    
+    # Instantiate and run the 3D Pose Player with user inputs
+    viewer = Pose3DPlayer(
+        json_path=json_path,
+        target_idx=target_idx,
+        edges=SMPL24_EDGES,
+        fps=30,
+        fixed_limits=lim,
+        auto_scale_margin=1.3,
+        point_size=40,
+        sf_vertical = SF_vertical
+    )
+
+
+    #--------REAL WORLD LENGTH CALCULATION------------- not necesary just for debugging (SURE FIRE WORKS)
     def REALWORLD():
         if coords is not None and SF_vertical > 0:
             x,y,z = coords
