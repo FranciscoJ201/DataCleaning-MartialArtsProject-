@@ -80,6 +80,7 @@ class Pose3DPlayer:
         self.fixed_limits = fixed_limits
         self.auto_scale_margin = auto_scale_margin
         self.point_size = point_size
+        self.json_path = json_path
 
         # state
         self.i = 0
@@ -180,9 +181,9 @@ class Pose3DPlayer:
             self.ax.set_ylim(lo, hi)
             self.ax.set_zlim(lo, hi)
         #they arent initially set to the right thing so change them here
-        self.ax.set_xlabel("Y")
-        self.ax.set_ylabel("Z")
-        self.ax.set_zlabel("X")
+        self.ax.set_xlabel("Left-Right Y")
+        self.ax.set_ylabel("Up-Down Z")
+        self.ax.set_zlabel("Forward-Back X")
 
     # ---------- UI ----------
     def _add_widgets(self):
@@ -371,7 +372,7 @@ class Pose3DPlayer:
     #--------- Frame Selection Dependencies-----------
     # NEW: dump them on demand; no other side effects
     def _on_mark_range(self, _evt):
-        filecleanupsingle(JSON_PATH,'test.json',self.target_idx,(self.selected_start,self.selected_end))
+        filecleanupsingle(self.json_path,'test.json',self.target_idx,(self.selected_start,self.selected_end))
         print(f"[FrameRange] start={self.selected_start}, end={self.selected_end}")
 
     # Optional convenience getter if you want to read them from code

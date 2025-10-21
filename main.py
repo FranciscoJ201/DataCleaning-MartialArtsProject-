@@ -117,11 +117,11 @@ def main():
         # Check if necessary keypoints exist
         if all(idx < len(z) for idx in [HEAD_IDX, LFOOT_IDX, RFOOT_IDX]):
             # 1. Get the Z-coordinate for the head
-            Z_Head = y[HEAD_IDX]
+            Y_Head = y[HEAD_IDX]
             # 2. Get the lowest Z-coordinate (the 'floor') from the two feet
-            Z_min_Feet = np.min([y[LFOOT_IDX], y[RFOOT_IDX]])
+            Y_min_Feet = np.min([y[LFOOT_IDX], y[RFOOT_IDX]])
             # 3. Calculate the Vertical Keypoint Height (Height_KP)
-            Height_KP = np.abs( Z_Head - Z_min_Feet)
+            Height_KP = np.abs( Y_Head - Y_min_Feet)
             # 4. Calculate the Scaling Factor (Inches per KP Unit)
             if Height_KP > 0:
                 SF_vertical = fighter_height / Height_KP
