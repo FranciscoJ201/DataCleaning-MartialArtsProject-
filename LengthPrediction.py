@@ -1,6 +1,6 @@
 from threeDimPlot import load_frames,select_person_entry,get_xyz_from_entry
 import numpy as np
-from util import distTwoPoints,SMPL24_EDGES,lim
+from util import distTwoPoints,SMPL24_EDGES
 #Key Aspects of the Script:
 #1.) Length/Distance tracking between different body parts. 
 #2.) 3d View Just like in the 3D single person plot script. 

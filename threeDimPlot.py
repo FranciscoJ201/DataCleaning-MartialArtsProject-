@@ -352,7 +352,7 @@ class Pose3DPlayer:
                 
                 # Update the text label
                 self.custom_line_label.set_position((mid_x, mid_y, mid_z))
-                self.custom_line_label.set_text(f"{real_life_distance:.2f}")
+                self.custom_line_label.set_text(f"{real_life_distance:.2f} in.")
             else:
                 self.custom_line.set_data_3d([], [], [])
                 self.custom_line_label.set_text("") # Clear the text label

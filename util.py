@@ -23,9 +23,8 @@ SMPL24_EDGES = [
     (12,14),(14,17),(17,19),(19,21),(21,23)
 ]
 
-#CONSTS ---------
+#CONSTS --------- 
 lim = (-1.5,1.5)
-JSON_PATH = "/Users/franciscojimenez/Desktop/3d.json"
 #repaired on desktop^
 # lim = None
 #----------------
