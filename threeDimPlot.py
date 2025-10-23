@@ -151,16 +151,26 @@ class Pose3DPlayer:
         self.custom_line_points = (pointAIdx,pointBIdx)
         self._draw_frame(self.i)
 
-    def output_lengths(self,x,y,z,frame_label):
+    def output_lengths(self, x, y, z, frame_label):
+       
         """
         Calculates and stores the real-life distance for the custom selected
-        keypoints in the current frame.
+        keypoints in a single frame.
+        
+        Args:
+            x, y, z: np.arrays of keypoint coordinates for the frame.
+            frame_label: The label (key) of the current frame.
         """
         if not self.custom_line_points:
             return
 
         a, b = self.custom_line_points
         
+        # Check if the keypoint indices are valid for the current data
+        if a >= len(x) or b >= len(x):
+            # print(f"Error: Keypoint index out of bounds for frame {frame_label}. Skipping distance calculation.")
+            return
+
         try:
             # 1. Calculate Keypoint Distance (KP Units)
             kp_distance = distTwoPoints(x[a], y[a], z[a], x[b], y[b], z[b])
@@ -171,16 +181,11 @@ class Pose3DPlayer:
             # 3. Store the result
             self.collected_data.append((frame_label, real_life_distance))
 
-            # 4. Optional: Print the result (similar to REALWORLD but per frame)
-            # This can get noisy, but is useful for real-time verification.
-            # print(f"[OUTPUT] Frame: {frame_label} | Distance ({a}-{b}): {real_life_distance:.2f} inches")
+            # 4. Optional: Print the result (useful for verification)
+            print(f"[OUTPUT] Frame: {frame_label} | Distance ({a}-{b}): {real_life_distance:.2f} inches")
 
-        except IndexError:
-            # This should not happen if _draw_frame checks bounds, but good practice
-            print(f"Error: Keypoint index out of bounds for frame {frame_label}.")
         except Exception as e:
-            print(f"An unexpected error occurred during distance calculation: {e}")
-
+            print(f"An unexpected error occurred during distance calculation for frame {frame_label}: {e}")
 
 
     # ---------- Data helpers ----------
@@ -393,7 +398,7 @@ class Pose3DPlayer:
                 self.custom_line.set_data_3d([], [], [])
                 self.custom_line_label.set_text("") # Clear the text label
 
-        self.output_lengths(x,y,z,frame_label)
+        
 
 
         # update limits (comment out if you want them fixed from frame 0)
@@ -406,12 +411,48 @@ class Pose3DPlayer:
         self.ax.set_title(f"3D Pose Player — {frame_label} ({who})")
         self.fig.canvas.draw_idle()
 
+
+
+    #for collecting segment lengths on individual fighters
+    def _collect_segment_distances(self): 
+        """
+        Iterates through the selected frame range (self.selected_start to 
+        self.selected_end) and collects the keypoint distance for the 
+        custom-selected points in each frame, storing results in self.collected_data.
+        """
+        if not self.custom_line_points:
+            print("[Distance Collection] No custom keypoints selected.")
+            return
+
+        self.collected_data = [] # Clear previous data before collecting a new range
+        
+        # Determine the valid range indices based on the self.keys list
+        start_i = self._clamp_idx(self.selected_start)
+        end_i = self._clamp_idx(self.selected_end)
+
+        print(f"[Distance Collection] Processing frames from {start_i} to {end_i}...")
+
+        # Loop from start_i up to and including end_i
+        for i in range(start_i, end_i + 1):
+            x, y, z = self._get_xyz(i)
+            frame_label = self.keys[i]
+            
+            if x is not None:
+                # Call the single-frame distance function
+                self.output_lengths(x, y, z, frame_label)
+
+
+
+
+
         
     #--------- Frame Selection Dependencies-----------
     # NEW: dump them on demand; no other side effects
     def _on_mark_range(self, _evt):
-        filecleanupsingle(self.json_path,'test.json',self.target_idx,(self.selected_start,self.selected_end))
+        #filecleanupsingle(self.json_path,'test.json',self.target_idx,(self.selected_start,self.selected_end))
         print(f"[FrameRange] start={self.selected_start}, end={self.selected_end}")
+        print("Dont forget to uncomment filecleanupsingle in on mark range if you want to save individual frame jsons")
+        self._collect_segment_distances()
 
     # Optional convenience getter if you want to read them from code
     def get_frame_range(self):
