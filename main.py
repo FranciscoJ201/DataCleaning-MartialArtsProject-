@@ -3,34 +3,9 @@ from LengthPrediction import calc_limb_lengths
 import tkinter as tk
 from tkinter import filedialog, simpledialog
 import os
-from util import SMPL24_EDGES,lim, distTwoPoints
+from util import SMPL24_EDGES,lim, distTwoPoints,SMPL_BODY_PARTS
 import numpy as np
-SMPL_BODY_PARTS = {
-        0: "Pelvis",
-        1: "Left Hip",
-        2: "Right Hip",
-        3: "Spine1",
-        4: "Left Knee",
-        5: "Right Knee",
-        6: "Spine2",
-        7: "Left Ankle",
-        8: "Right Ankle",
-        9: "Spine3",
-        10: "Left Foot",
-        11: "Right Foot",
-        12: "Neck",
-        13: "Left Collar",
-        14: "Right Collar",
-        15: "Head",
-        16: "Left Shoulder",
-        17: "Right Shoulder",
-        18: "Left Elbow",
-        19: "Right Elbow",
-        20: "Left Wrist",
-        21: "Right Wrist",
-        22: "Left Hand",
-        23: "Right Hand"
-    }
+
 
 def main():
     """
@@ -118,10 +93,6 @@ def main():
         print("Could not retrieve keypoint coordinates for scaling factor calculation.")
 
 
-
-
-
-    
     # Instantiate and run the 3D Pose Player with user inputs
     viewer = Pose3DPlayer(
         json_path=json_path,
@@ -168,6 +139,7 @@ def main():
     viewer.connect_points(int(a),int(b))
     REALWORLD()
     viewer.run()
+
 
 if __name__ == "__main__":
     main()

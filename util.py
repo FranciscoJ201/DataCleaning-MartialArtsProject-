@@ -28,4 +28,29 @@ lim = (-1.5,1.5)
 #repaired on desktop^
 # lim = None
 #----------------
-
+SMPL_BODY_PARTS = {
+        0: "Pelvis",
+        1: "Left Hip",
+        2: "Right Hip",
+        3: "Spine1",
+        4: "Left Knee",
+        5: "Right Knee",
+        6: "Spine2",
+        7: "Left Ankle",
+        8: "Right Ankle",
+        9: "Spine3",
+        10: "Left Foot",
+        11: "Right Foot",
+        12: "Neck",
+        13: "Left Collar",
+        14: "Right Collar",
+        15: "Head",
+        16: "Left Shoulder",
+        17: "Right Shoulder",
+        18: "Left Elbow",
+        19: "Right Elbow",
+        20: "Left Wrist",
+        21: "Right Wrist",
+        22: "Left Hand",
+        23: "Right Hand"
+    }

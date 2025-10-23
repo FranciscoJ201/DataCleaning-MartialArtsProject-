@@ -10,7 +10,6 @@ from util import distTwoPoints,lim,SMPL24_EDGES # Import the distance function
 
 
 
-
 def frame_number(k: str) -> int:
     base = os.path.splitext(k)[0]
     try:
@@ -88,7 +87,11 @@ class Pose3DPlayer:
         self.i = 0
         self.playing = False
 
-        # NEW: frame-range state (just collected, not used)
+        # List to store collected distance data per frame
+        # Format: [(frame_label, distance_in_inches), ...]
+        self.collected_data = [] 
+
+        # frame-range state (just collected, not used)
         self.selected_start = 0
         self.selected_end = len(self.keys) - 1
 
@@ -148,6 +151,35 @@ class Pose3DPlayer:
         self.custom_line_points = (pointAIdx,pointBIdx)
         self._draw_frame(self.i)
 
+    def output_lengths(self,x,y,z,frame_label):
+        """
+        Calculates and stores the real-life distance for the custom selected
+        keypoints in the current frame.
+        """
+        if not self.custom_line_points:
+            return
+
+        a, b = self.custom_line_points
+        
+        try:
+            # 1. Calculate Keypoint Distance (KP Units)
+            kp_distance = distTwoPoints(x[a], y[a], z[a], x[b], y[b], z[b])
+            
+            # 2. Convert to Real-Life Distance (Inches)
+            real_life_distance = kp_distance * self.sf_vertical
+            
+            # 3. Store the result
+            self.collected_data.append((frame_label, real_life_distance))
+
+            # 4. Optional: Print the result (similar to REALWORLD but per frame)
+            # This can get noisy, but is useful for real-time verification.
+            # print(f"[OUTPUT] Frame: {frame_label} | Distance ({a}-{b}): {real_life_distance:.2f} inches")
+
+        except IndexError:
+            # This should not happen if _draw_frame checks bounds, but good practice
+            print(f"Error: Keypoint index out of bounds for frame {frame_label}.")
+        except Exception as e:
+            print(f"An unexpected error occurred during distance calculation: {e}")
 
 
 
@@ -308,10 +340,14 @@ class Pose3DPlayer:
         self.timer.stop()
         self.i = (self.i + delta) % len(self.keys)
         self.slider.set_val(self.i)  # updates plot
+    
 
     # ---------- Drawing ----------
     def _draw_frame(self, i):
         x, y, z = self._get_xyz(i)
+
+        frame_label = self.keys[i]
+        
         if x is None:
             # Hide if missing data on this frame
             self.scat._offsets3d = ([], [], [])
@@ -357,7 +393,7 @@ class Pose3DPlayer:
                 self.custom_line.set_data_3d([], [], [])
                 self.custom_line_label.set_text("") # Clear the text label
 
-
+        self.output_lengths(x,y,z,frame_label)
 
 
         # update limits (comment out if you want them fixed from frame 0)
@@ -365,10 +401,9 @@ class Pose3DPlayer:
             self._set_limits(x, y, z)
 
         # update title
-        frame_label = self.keys[i]
+        
         who = f"idx={self.target_idx}" if self.target_idx is not None else "first person"
         self.ax.set_title(f"3D Pose Player — {frame_label} ({who})")
-
         self.fig.canvas.draw_idle()
 
         
@@ -381,7 +416,7 @@ class Pose3DPlayer:
     # Optional convenience getter if you want to read them from code
     def get_frame_range(self):
         return self.selected_start, self.selected_end
-    
+
     # ---------- Run ----------
     def run(self):
         self._draw_frame(self.i)
