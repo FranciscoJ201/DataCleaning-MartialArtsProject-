@@ -7,8 +7,9 @@ from JSON_FILES.JSONREAD import filecleanup, filecleanupsingle
 from util import distTwoPoints,lim,SMPL24_EDGES # Import the distance function
 
 
-
-
+# =========================================================================
+# 1. STANDALONE DATA LOADING HELPERS
+# =========================================================================
 
 def frame_number(k: str) -> int:
     base = os.path.splitext(k)[0]
@@ -58,7 +59,15 @@ def get_xyz_from_entry(entry):
         return None, None, None
     return kp[:, 0], kp[:, 1], kp[:, 2]
 
+
+# =========================================================================
+# 2. MAIN PLAYER CLASS
+# =========================================================================
+
 class Pose3DPlayer:
+    # ---------------------------------------------------------------------
+    # 2.1. INITIALIZATION AND STATE
+    # ---------------------------------------------------------------------
     def __init__(
         self,
         json_path,
@@ -70,6 +79,7 @@ class Pose3DPlayer:
         point_size=40,
         sf_vertical = 0.0
     ):
+        # --- Config & Data Loading ---
         self.keys, self.frames = load_frames(json_path)
         if not self.keys:
             raise RuntimeError("No frames found in JSON.")
@@ -83,24 +93,19 @@ class Pose3DPlayer:
         self.json_path = json_path
         self.sf_vertical = sf_vertical
 
-        # state
+        # --- State Variables ---
         self.i = 0
         self.playing = False
-
-        # List to store collected distance data per frame
-        # Format: [(frame_label, distance_in_inches), ...]
-        self.collected_data = [] 
-
-        # frame-range state (just collected, not used)
+        self.collected_data = [] # Format: [(frame_label, distance_in_inches), ...]
         self.selected_start = 0
         self.selected_end = len(self.keys) - 1
 
-        # figure + axes
+        # --- Figure & Axes Setup ---
         self.fig = plt.figure(figsize=(8, 7))
         self.ax = self.fig.add_subplot(111, projection="3d")
         self.ax.set_title("3D Pose Player")
 
-        # initial data
+        # --- Initial Frame Data & Artists ---
         x, y, z = self._get_xyz(self.i)
         if x is None:
             # Try to find a frame with data
@@ -109,45 +114,42 @@ class Pose3DPlayer:
                 if x is not None:
                     self.i = k
                     break
-
         if x is None:
             raise RuntimeError("Could not find any frame with 'pred_xyz_jts' data.")
 
-        # artists
+        # Main keypoint scatter plot
         self.scat = self.ax.scatter3D(x, y, z, s=self.point_size)
+        
+        # Standard connections (lines for SMPL edges)
         self.lines = []
         for (a, b) in self.edges:
             if a < len(x) and b < len(x):
                 ln, = self.ax.plot([x[a], x[b]], [y[a], y[b]], [z[a], z[b]])
                 self.lines.append((ln, a, b))
 
-
-
-
-        #CUSTOM CONNECTIONS between keypoints
+        # Custom connection (for user-selected points)
         self.custom_line, = self.ax.plot([],[],[], color = 'red',linewidth=5)
-        self.custom_line_points = None #INDICES TO CONNECT LATER
-
+        self.custom_line_points = None # INDICES TO CONNECT LATER
         self.custom_line_label = self.ax.text(0,0,0,"", color="red",fontsize=12)
 
-
-        # axes limits
+        # --- Axes Limits & Labels ---
         self._set_limits(x, y, z)
 
-        # UI: buttons + slider
+        # --- UI Setup (Widgets) ---
         self._add_widgets()
 
-        # keyboard bindings
+        # --- Event Bindings ---
         self.fig.canvas.mpl_connect("key_press_event", self._on_key)
-
-        # timer for playback
         self.timer = self.fig.canvas.new_timer(interval=self.interval)
         self.timer.add_callback(self._on_timer)
 
 
-    #--------Connecting Keypoints-------
+    # ---------------------------------------------------------------------
+    # 2.2. DATA ACCESS AND CALCULATION METHODS
+    # ---------------------------------------------------------------------
+    
     def connect_points(self,pointAIdx, pointBIdx):
-    #sets the indices for a line to be drawn between keypoints
+        #sets the indices for a line to be drawn between keypoints
         self.custom_line_points = (pointAIdx,pointBIdx)
         self._draw_frame(self.i)
 
@@ -156,10 +158,6 @@ class Pose3DPlayer:
         """
         Calculates and stores the real-life distance for the custom selected
         keypoints in a single frame.
-        
-        Args:
-            x, y, z: np.arrays of keypoint coordinates for the frame.
-            frame_label: The label (key) of the current frame.
         """
         if not self.custom_line_points:
             return
@@ -168,7 +166,6 @@ class Pose3DPlayer:
         
         # Check if the keypoint indices are valid for the current data
         if a >= len(x) or b >= len(x):
-            # print(f"Error: Keypoint index out of bounds for frame {frame_label}. Skipping distance calculation.")
             return
 
         try:
@@ -187,8 +184,33 @@ class Pose3DPlayer:
         except Exception as e:
             print(f"An unexpected error occurred during distance calculation for frame {frame_label}: {e}")
 
+    def _collect_segment_distances(self): 
+        """
+        Iterates through the selected frame range and collects the keypoint 
+        distance for the custom-selected points in each frame.
+        """
+        if not self.custom_line_points:
+            print("[Distance Collection] No custom keypoints selected.")
+            return
 
-    # ---------- Data helpers ----------
+        self.collected_data = [] # Clear previous data before collecting a new range
+        
+        # Determine the valid range indices based on the self.keys list
+        start_i = self._clamp_idx(self.selected_start)
+        end_i = self._clamp_idx(self.selected_end)
+
+        print(f"[Distance Collection] Processing frames from {start_i} to {end_i}...")
+
+        # Loop from start_i up to and including end_i
+        for i in range(start_i, end_i + 1):
+            x, y, z = self._get_xyz(i)
+            frame_label = self.keys[i]
+            
+            if x is not None:
+                # Call the single-frame distance function
+                self.output_lengths(x, y, z, frame_label)
+
+    # --- Data helpers ---
     def _get_xyz(self, idx):
         key = self.keys[idx]
         entries = self.frames[key]
@@ -202,13 +224,12 @@ class Pose3DPlayer:
             self.ax.set_ylim(lo, hi)
             self.ax.set_zlim(lo, hi)
         else:
-            # autoscale with margin
+            # autoscale with margin (makes the box cubic-ish)
             xs = np.array(x); ys = np.array(y); zs = np.array(z)
             xmin, xmax = xs.min(), xs.max()
             ymin, ymax = ys.min(), ys.max()
             zmin, zmax = zs.min(), zs.max()
 
-            # make cubic-ish box so rotations look nice
             cmin = min(xmin, ymin, zmin)
             cmax = max(xmax, ymax, zmax)
             span = (cmax - cmin) * self.auto_scale_margin
@@ -219,47 +240,52 @@ class Pose3DPlayer:
             self.ax.set_xlim(lo, hi)
             self.ax.set_ylim(lo, hi)
             self.ax.set_zlim(lo, hi)
-        #they arent initially set to the right thing so change them here
+        
+        # Set axis labels
         self.ax.set_xlabel("Left-Right Y")
         self.ax.set_ylabel("Up-Down Z")
         self.ax.set_zlabel("Forward-Back X")
 
-    # ---------- UI ----------
+    # ---------------------------------------------------------------------
+    # 2.3. UI AND DRAWING METHODS
+    # ---------------------------------------------------------------------
+
     def _add_widgets(self):
-        # Make extra room at the bottom for the new range slider
-             # a bit more space for inputs
+        # Make extra room at the bottom
         plt.subplots_adjust(bottom=0.30)
 
-        # Buttons row
+        # Button axes
         ax_prev   = plt.axes([0.12, 0.20, 0.10, 0.06])
         ax_play   = plt.axes([0.24, 0.20, 0.12, 0.06])
         ax_next   = plt.axes([0.38, 0.20, 0.10, 0.06])
         ax_fps    = plt.axes([0.55, 0.20, 0.25, 0.06])
 
-        # NEW: Start/End text inputs + Save
+        # Range text inputs + Save button axes
         ax_start  = plt.axes([0.12, 0.12, 0.18, 0.06])
         ax_end    = plt.axes([0.33, 0.12, 0.18, 0.06])
         ax_save   = plt.axes([0.55, 0.12, 0.10, 0.06])
 
-        # Existing single-frame slider
+        # Slider axes
         ax_slider = plt.axes([0.12, 0.04, 0.76, 0.04])
 
+        # Buttons
         self.btn_prev   = Button(ax_prev, "Prev")
         self.btn_play   = Button(ax_play, "Play")
         self.btn_next   = Button(ax_next, "Next")
         self.btn_save   = Button(ax_save, "Save Range")
 
-        # NEW: text boxes (type numbers, press Enter)
+        # Text Boxes
         self.tb_start = TextBox(ax_start, "Start", initial=str(self.selected_start))
         self.tb_end   = TextBox(ax_end,   "End",   initial=str(self.selected_end))
 
+        # Sliders
         self.slider     = Slider(ax_slider, "Frame", 0, len(self.keys) - 1, valinit=self.i, valstep=1)
         self.fps_slider = Slider(ax_fps, "FPS", 1, 60, valinit=self.fps, valstep=1)
 
-        # camera view preset
+        # Camera preset
         self.ax.view_init(elev=110, azim=90)
 
-        # wire up controls
+        # Wire up controls
         self.btn_prev.on_clicked(lambda evt: self.step(-1))
         self.btn_next.on_clicked(lambda evt: self.step(1))
         self.btn_play.on_clicked(lambda evt: self.toggle_play())
@@ -271,7 +297,63 @@ class Pose3DPlayer:
         self.slider.on_changed(self._on_slider)
         self.fps_slider.on_changed(self._on_fps_changed)
 
-    # ---------- Events ----------
+    def _draw_frame(self, i):
+        x, y, z = self._get_xyz(i)
+        frame_label = self.keys[i]
+        
+        if x is None:
+            # Hide if missing data on this frame
+            self.scat._offsets3d = ([], [], [])
+            for ln, a, b in self.lines:
+                ln.set_data_3d([], [], [])
+            self.custom_line.set_data_3d([],[],[])
+            self.custom_line_label.set_text("")
+            self.fig.canvas.draw_idle()
+            return
+
+        # 1. Update scatter plot
+        self.scat._offsets3d = (x, y, z)
+
+        # 2. Update standard lines (SMPL edges)
+        n = len(x)
+        for ln, a, b in self.lines:
+            if a < n and b < n:
+                ln.set_data_3d([x[a], x[b]], [y[a], y[b]], [z[a], z[b]])
+            else:
+                ln.set_data_3d([], [], [])
+
+        # 3. Update custom line and label
+        if self.custom_line_points:
+            a,b = self.custom_line_points
+            if a < len(x) and b < len(x):
+                self.custom_line.set_data_3d([x[a], x[b]], [y[a], y[b]], [z[a], z[b]])
+                
+                # Calculate distance for label
+                kp_distance = distTwoPoints(x[a], y[a], z[a], x[b], y[b], z[b])
+                real_life_distance = kp_distance * self.sf_vertical
+                mid_x = (x[a] + x[b]) / 2
+                mid_y = (y[a] + y[b]) / 2
+                mid_z = (z[a] + z[b]) / 2
+                
+                self.custom_line_label.set_position((mid_x, mid_y, mid_z))
+                self.custom_line_label.set_text(f"{real_life_distance:.2f} in.")
+            else:
+                self.custom_line.set_data_3d([], [], [])
+                self.custom_line_label.set_text("")
+
+        # 4. Update limits if not fixed
+        if self.fixed_limits is None:
+            self._set_limits(x, y, z)
+
+        # 5. Update title and redraw
+        who = f"idx={self.target_idx}" if self.target_idx is not None else "first person"
+        self.ax.set_title(f"3D Pose Player — {frame_label} ({who})")
+        self.fig.canvas.draw_idle()
+
+    # ---------------------------------------------------------------------
+    # 2.4. EVENT HANDLERS
+    # ---------------------------------------------------------------------
+
     def _on_key(self, event):
         if event.key == " ":
             self.toggle_play()
@@ -300,15 +382,14 @@ class Pose3DPlayer:
         self.i = (self.i + 1) % len(self.keys)
         self.slider.set_val(self.i)  # also triggers _draw_frame
 
-    #-----------Handlers-----------
     def _clamp_idx(self, v: int) -> int:
         return max(0, min(len(self.keys) - 1, v))
 
     def _on_start_submit(self, text):
         try:
-            v = int(float(text))  # accept "12", "12.0"
+            v = int(float(text))
         except ValueError:
-            v = self.selected_start  # ignore bad input
+            v = self.selected_start
         v = self._clamp_idx(v)
         # ensure start <= end
         if v > self.selected_end:
@@ -330,7 +411,20 @@ class Pose3DPlayer:
         self.selected_end = v
         self.tb_end.set_val(str(self.selected_end))
 
-    # ---------- Controls ----------
+    def _on_mark_range(self, _evt):
+        """
+        Handles the 'Save Range' button click: calls file cleanup 
+        (if uncommented) and triggers distance collection for the range.
+        """
+        #filecleanupsingle(self.json_path,'test.json',self.target_idx,(self.selected_start,self.selected_end))
+        print(f"[FrameRange] start={self.selected_start}, end={self.selected_end}")
+        print("Dont forget to uncomment filecleanupsingle in on mark range if you want to save individual frame jsons")
+        self._collect_segment_distances()
+
+    # ---------------------------------------------------------------------
+    # 2.5. PUBLIC CONTROLS AND RUN METHOD
+    # ---------------------------------------------------------------------
+
     def toggle_play(self):
         self.playing = not self.playing
         self.btn_play.label.set_text("Pause" if self.playing else "Play")
@@ -345,121 +439,11 @@ class Pose3DPlayer:
         self.timer.stop()
         self.i = (self.i + delta) % len(self.keys)
         self.slider.set_val(self.i)  # updates plot
-    
 
-    # ---------- Drawing ----------
-    def _draw_frame(self, i):
-        x, y, z = self._get_xyz(i)
-
-        frame_label = self.keys[i]
-        
-        if x is None:
-            # Hide if missing data on this frame
-            self.scat._offsets3d = ([], [], [])
-            for ln, a, b in self.lines:
-                ln.set_data_3d([], [], [])
-            self.fig.canvas.draw_idle()
-
-            self.custom_line.set_data_3d([],[],[])
-            self.custom_line_label.set_text("")
-            self.fig.canvas.draw_idle()
-            return
-
-        # update scatter
-        self.scat._offsets3d = (x, y, z)
-
-        # update lines
-        n = len(x)
-        for ln, a, b in self.lines:
-            if a < n and b < n:
-                ln.set_data_3d([x[a], x[b]], [y[a], y[b]], [z[a], z[b]])
-            else:
-                ln.set_data_3d([], [], [])
-
-        if self.custom_line_points:
-            a,b = self.custom_line_points
-            if a < len(x) and b < len(x):
-                # Update the custom line
-                self.custom_line.set_data_3d([x[a], x[b]], [y[a], y[b]], [z[a], z[b]])
-                
-                # Calculate the distance KPS
-                kp_distance = distTwoPoints(x[a], y[a], z[a], x[b], y[b], z[b])
-                #calculate distance REAL LIFE
-                real_life_distance = kp_distance * self.sf_vertical
-                # Calculate the midpoint for the text label
-                mid_x = (x[a] + x[b]) / 2
-                mid_y = (y[a] + y[b]) / 2
-                mid_z = (z[a] + z[b]) / 2
-                
-                # Update the text label
-                self.custom_line_label.set_position((mid_x, mid_y, mid_z))
-                self.custom_line_label.set_text(f"{real_life_distance:.2f} in.")
-            else:
-                self.custom_line.set_data_3d([], [], [])
-                self.custom_line_label.set_text("") # Clear the text label
-
-        
-
-
-        # update limits (comment out if you want them fixed from frame 0)
-        if self.fixed_limits is None:
-            self._set_limits(x, y, z)
-
-        # update title
-        
-        who = f"idx={self.target_idx}" if self.target_idx is not None else "first person"
-        self.ax.set_title(f"3D Pose Player — {frame_label} ({who})")
-        self.fig.canvas.draw_idle()
-
-
-
-    #for collecting segment lengths on individual fighters
-    def _collect_segment_distances(self): 
-        """
-        Iterates through the selected frame range (self.selected_start to 
-        self.selected_end) and collects the keypoint distance for the 
-        custom-selected points in each frame, storing results in self.collected_data.
-        """
-        if not self.custom_line_points:
-            print("[Distance Collection] No custom keypoints selected.")
-            return
-
-        self.collected_data = [] # Clear previous data before collecting a new range
-        
-        # Determine the valid range indices based on the self.keys list
-        start_i = self._clamp_idx(self.selected_start)
-        end_i = self._clamp_idx(self.selected_end)
-
-        print(f"[Distance Collection] Processing frames from {start_i} to {end_i}...")
-
-        # Loop from start_i up to and including end_i
-        for i in range(start_i, end_i + 1):
-            x, y, z = self._get_xyz(i)
-            frame_label = self.keys[i]
-            
-            if x is not None:
-                # Call the single-frame distance function
-                self.output_lengths(x, y, z, frame_label)
-
-
-
-
-
-        
-    #--------- Frame Selection Dependencies-----------
-    # NEW: dump them on demand; no other side effects
-    def _on_mark_range(self, _evt):
-        #filecleanupsingle(self.json_path,'test.json',self.target_idx,(self.selected_start,self.selected_end))
-        print(f"[FrameRange] start={self.selected_start}, end={self.selected_end}")
-        print("Dont forget to uncomment filecleanupsingle in on mark range if you want to save individual frame jsons")
-        self._collect_segment_distances()
-
-    # Optional convenience getter if you want to read them from code
     def get_frame_range(self):
+        # Optional convenience getter if you want to read them from code
         return self.selected_start, self.selected_end
 
-    # ---------- Run ----------
     def run(self):
         self._draw_frame(self.i)
         plt.show()
-
