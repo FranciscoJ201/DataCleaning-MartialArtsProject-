@@ -420,7 +420,7 @@ class Pose3DPlayer:
         print(f"[FrameRange] start={self.selected_start}, end={self.selected_end}")
         print("Dont forget to uncomment filecleanupsingle in on mark range if you want to save individual frame jsons")
         self._collect_segment_distances()
-        createSegmentJson(self.collected_data)
+        createSegmentJson(self.collected_data,self.custom_line_points)
         
 
     # ---------------------------------------------------------------------
