@@ -5,7 +5,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (needed for 3D)
 from matplotlib.widgets import Button, Slider, TextBox
 from JSON_FILES.JSONREAD import filecleanup, filecleanupsingle
 from util import distTwoPoints,lim,SMPL24_EDGES # Import the distance function
-
+from DataToJson import createSegmentJson
 
 # =========================================================================
 # 1. STANDALONE DATA LOADING HELPERS
@@ -420,6 +420,8 @@ class Pose3DPlayer:
         print(f"[FrameRange] start={self.selected_start}, end={self.selected_end}")
         print("Dont forget to uncomment filecleanupsingle in on mark range if you want to save individual frame jsons")
         self._collect_segment_distances()
+        createSegmentJson(self.collected_data)
+        
 
     # ---------------------------------------------------------------------
     # 2.5. PUBLIC CONTROLS AND RUN METHOD
