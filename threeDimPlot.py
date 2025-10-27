@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (needed for 3D)
 from matplotlib.widgets import Button, Slider, TextBox
 from JSON_FILES.JSONREAD import filecleanup, filecleanupsingle
-from util import distTwoPoints,lim,SMPL24_EDGES # Import the distance function
+from util import distTwoPoints,lim,SMPL24_EDGES,SMPL_BODY_PARTS # Import the distance function
 from DataToJson import createSegmentJson
 
 # =========================================================================
@@ -99,7 +99,10 @@ class Pose3DPlayer:
         self.collected_data = [] # Format: [(frame_label, distance_in_inches), ...]
         self.selected_start = 0
         self.selected_end = len(self.keys) - 1
-
+        
+        # Custom connection (for user-selected points)
+        self.custom_line_points = (0, 0) # INITIALIZED TO A DEFAULT
+        
         # --- Figure & Axes Setup ---
         self.fig = plt.figure(figsize=(8, 7))
         self.ax = self.fig.add_subplot(111, projection="3d")
@@ -129,7 +132,6 @@ class Pose3DPlayer:
 
         # Custom connection (for user-selected points)
         self.custom_line, = self.ax.plot([],[],[], color = 'red',linewidth=5)
-        self.custom_line_points = None # INDICES TO CONNECT LATER
         self.custom_line_label = self.ax.text(0,0,0,"", color="red",fontsize=12)
 
         # --- Axes Limits & Labels ---
@@ -252,31 +254,41 @@ class Pose3DPlayer:
 
     def _add_widgets(self):
         # Make extra room at the bottom
-        plt.subplots_adjust(bottom=0.30)
+        # Increased bottom margin to accommodate the new input box
+        plt.subplots_adjust(bottom=0.35) 
 
-        # Button axes
-        ax_prev   = plt.axes([0.12, 0.20, 0.10, 0.06])
-        ax_play   = plt.axes([0.24, 0.20, 0.12, 0.06])
-        ax_next   = plt.axes([0.38, 0.20, 0.10, 0.06])
-        ax_fps    = plt.axes([0.55, 0.20, 0.25, 0.06])
+        # Button axes (Prev/Play/Next/FPS - Moved up)
+        ax_prev   = plt.axes([0.12, 0.25, 0.10, 0.06])
+        ax_play   = plt.axes([0.24, 0.25, 0.12, 0.06])
+        ax_next   = plt.axes([0.38, 0.25, 0.10, 0.06])
+        ax_fps    = plt.axes([0.55, 0.25, 0.25, 0.06])
 
-        # Range text inputs + Save button axes
-        ax_start  = plt.axes([0.12, 0.12, 0.18, 0.06])
-        ax_end    = plt.axes([0.33, 0.12, 0.18, 0.06])
-        ax_save   = plt.axes([0.55, 0.12, 0.10, 0.06])
+        # Row 1: Range text inputs (Start/End)
+        ax_start  = plt.axes([0.12, 0.17, 0.18, 0.06])
+        ax_end    = plt.axes([0.33, 0.17, 0.18, 0.06])
+        
+        # Row 2: NEW Keypoint Input & Save Button
+        ax_kp_input = plt.axes([0.12, 0.09, 0.25, 0.06])
+        ax_save     = plt.axes([0.40, 0.09, 0.15, 0.06]) # Dedicated save button
 
-        # Slider axes
-        ax_slider = plt.axes([0.12, 0.04, 0.76, 0.04])
+        # Slider axes (Moved down)
+        ax_slider = plt.axes([0.12, 0.02, 0.76, 0.04])
 
         # Buttons
         self.btn_prev   = Button(ax_prev, "Prev")
         self.btn_play   = Button(ax_play, "Play")
         self.btn_next   = Button(ax_next, "Next")
-        self.btn_save   = Button(ax_save, "Save Range")
+        
+        # Dedicated save button
+        self.btn_save_points = Button(ax_save, "Save Points")
 
         # Text Boxes
         self.tb_start = TextBox(ax_start, "Start", initial=str(self.selected_start))
         self.tb_end   = TextBox(ax_end,   "End",   initial=str(self.selected_end))
+        
+        # NEW TEXTBOX FOR KEYPOINT INPUT
+        start_kp, end_kp = self.custom_line_points if self.custom_line_points else (0, 0)
+        self.tb_new_points = TextBox(ax_kp_input, "Points (A,B)", initial=f"{start_kp},{end_kp}")
 
         # Sliders
         self.slider     = Slider(ax_slider, "Frame", 0, len(self.keys) - 1, valinit=self.i, valstep=1)
@@ -292,7 +304,12 @@ class Pose3DPlayer:
 
         self.tb_start.on_submit(self._on_start_submit)
         self.tb_end.on_submit(self._on_end_submit)
-        self.btn_save.on_clicked(self._on_mark_range)
+        
+        # NEW WIRING for the keypoint input (updates visuals on Enter)
+        self.tb_new_points.on_submit(self._on_new_points_submit)
+        
+        # NEW WIRING for the SAVE button (collects and saves data)
+        self.btn_save_points.on_clicked(self._on_save_data_handler) # Renamed to new function
 
         self.slider.on_changed(self._on_slider)
         self.fps_slider.on_changed(self._on_fps_changed)
@@ -411,17 +428,56 @@ class Pose3DPlayer:
         self.selected_end = v
         self.tb_end.set_val(str(self.selected_end))
 
-    def _on_mark_range(self, _evt):
+    # --- NEW HANDLERS FOR TEXTBOX INPUT ---
+
+    def _on_new_points_submit(self, text):
         """
-        Handles the 'Save Range' button click: calls file cleanup 
-        (if uncommented) and triggers distance collection for the range.
+        Updates the custom line points based on the textbox input, and redraws.
+        Wired to self.tb_new_points (on 'Enter' press).
         """
-        #filecleanupsingle(self.json_path,'test.json',self.target_idx,(self.selected_start,self.selected_end))
-        print(f"[FrameRange] start={self.selected_start}, end={self.selected_end}")
-        print("Dont forget to uncomment filecleanupsingle in on mark range if you want to save individual frame jsons")
-        self._collect_segment_distances()
-        createSegmentJson(self.collected_data,self.custom_line_points)
+        try:
+            a, b = map(int, text.split(","))
+            if a >= 0 and b >= 0:
+                # Use the existing method to update state and visual line
+                self.connect_points(a, b) 
+                print(f"[Tracking Updated] New points: {a} and {b}")
+            else:
+                raise ValueError("Indices must be non-negative.")
+        except ValueError as e:
+            print(f"Invalid keypoint format: {e}. Please enter two comma-separated positive integers (e.g., 10,3).")
+            # Revert the textbox text if input was bad
+            start_kp, end_kp = self.custom_line_points if self.custom_line_points else (0, 0)
+            self.tb_new_points.set_val(f"{start_kp},{end_kp}")
+
+    def _on_save_data_handler(self, _evt):
+        """
+        Handles the 'Save Points' button click.
+        1. Ensures the latest points from the TextBox are loaded.
+        2. Collects distance data for those points across the selected range.
+        3. Saves the data.
+        Wired to self.btn_save_points.
+        """
+        # 1. Ensure the internal state matches the TextBox content
+        # This calls _on_new_points_submit to parse and set the points
+        self._on_new_points_submit(self.tb_new_points.text)
         
+        # 2. Check if valid points exist
+        if not self.custom_line_points:
+            print("Cannot save: No valid custom keypoints are set.")
+            return
+
+        # 3. Core Save Logic (replaces the old _on_mark_range content)
+        print(f"[FrameRange] start={self.selected_start}, end={self.selected_end}")
+        
+        # filecleanupsingle(...) is commented out as before
+        
+        self._collect_segment_distances()
+        createSegmentJson(self.collected_data, self.custom_line_points)
+
+
+    # The old _on_mark_range and _on_save_custom_distance are REMOVED 
+    # as their functionality is replaced by the Matplotlib TextBox/Button logic.
+
 
     # ---------------------------------------------------------------------
     # 2.5. PUBLIC CONTROLS AND RUN METHOD
