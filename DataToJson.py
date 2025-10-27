@@ -6,7 +6,7 @@ import os # Import the os module to check for file existence
 data = [('0.jpg',np.float64(43.128048653258325)),('0.jpg',np.float64(41.128048653258325))]
 fakeKPS= (10,3)
 
-def createSegmentJson(data, custompoints):
+def createSegmentJson(data, custompoints,output_file):
     """
     Creates/Appends segment distance data to an existing JSON file.
     
@@ -15,7 +15,7 @@ def createSegmentJson(data, custompoints):
     it creates a new file.
     """
     a, b = custompoints
-    output_file = 'output_data.json'
+    
     
     # --- 1. Prepare new data entries ---
     new_measurements = []
@@ -57,4 +57,3 @@ def createSegmentJson(data, custompoints):
     except Exception as e:
         print(f"A critical error occurred while writing the JSON file: {e}")
 
-createSegmentJson(data, fakeKPS)

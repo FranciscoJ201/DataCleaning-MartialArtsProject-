@@ -266,7 +266,7 @@ class Pose3DPlayer:
         # Row 1: Range text inputs (Start/End)
         ax_start  = plt.axes([0.12, 0.17, 0.18, 0.06])
         ax_end    = plt.axes([0.33, 0.17, 0.18, 0.06])
-        
+        ax_output_name = plt.axes([0.6, 0.17, 0.25, 0.06])
         # Row 2: NEW Keypoint Input & Save Button
         ax_kp_input = plt.axes([0.12, 0.09, 0.25, 0.06])
         ax_save     = plt.axes([0.40, 0.09, 0.15, 0.06]) # Dedicated save button
@@ -285,7 +285,7 @@ class Pose3DPlayer:
         # Text Boxes
         self.tb_start = TextBox(ax_start, "Start", initial=str(self.selected_start))
         self.tb_end   = TextBox(ax_end,   "End",   initial=str(self.selected_end))
-        
+        self.tb_output_name = TextBox(ax_output_name, "File Name", initial="output_data.json")
         # NEW TEXTBOX FOR KEYPOINT INPUT
         start_kp, end_kp = self.custom_line_points if self.custom_line_points else (0, 0)
         self.tb_new_points = TextBox(ax_kp_input, "Points (A,B)", initial=f"{start_kp},{end_kp}")
@@ -304,6 +304,8 @@ class Pose3DPlayer:
 
         self.tb_start.on_submit(self._on_start_submit)
         self.tb_end.on_submit(self._on_end_submit)
+        self.output_filename = "output_data.json"
+        self.tb_output_name.on_submit(self._on_output_name_submit)
         
         # NEW WIRING for the keypoint input (updates visuals on Enter)
         self.tb_new_points.on_submit(self._on_new_points_submit)
@@ -449,6 +451,21 @@ class Pose3DPlayer:
             start_kp, end_kp = self.custom_line_points if self.custom_line_points else (0, 0)
             self.tb_new_points.set_val(f"{start_kp},{end_kp}")
 
+    def _on_output_name_submit(self, text):
+        """
+        Updates the output filename when the user submits the textbox content.
+        """
+        if text.strip():
+            self.output_filename = text.strip()
+            print(f"[Filename] Output file set to: {self.output_filename}")
+        else:
+            # Revert to default if user cleared the box
+            self.output_filename = "output_data.json"
+            self.tb_output_name.set_val(self.output_filename)
+            print(f"[Filename] Invalid name. Reverted to: {self.output_filename}")
+
+
+
     def _on_save_data_handler(self, _evt):
         """
         Handles the 'Save Points' button click.
@@ -472,7 +489,7 @@ class Pose3DPlayer:
         # filecleanupsingle(...) is commented out as before
         
         self._collect_segment_distances()
-        createSegmentJson(self.collected_data, self.custom_line_points)
+        createSegmentJson(self.collected_data, self.custom_line_points, self.output_filename)
 
 
     # The old _on_mark_range and _on_save_custom_distance are REMOVED 
