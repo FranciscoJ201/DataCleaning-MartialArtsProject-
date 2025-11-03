@@ -27,8 +27,9 @@ images = glob.glob('*.jpg')
 
 # Variable to hold the shape of the grayscale image for the calibration function
 image_size = None 
-
+step = 0
 for filename in images:
+    step += 1
     image = cv2.imread(filename)
     if image is None:
         print(f"Warning: Could not read image {filename}. Skipping.")
@@ -59,9 +60,10 @@ for filename in images:
         # Draw and display the corners for verification
         image = cv2.drawChessboardCorners(image, CHECKERBOARD, corners2, ret)
         
-        print(f"Found corners in {filename}")
+        print(f"Found corners in {filename} Frame:{step}")
+        
     else:
-        print(f"Did not find corners in {filename}")
+        print(f"Did not find corners in {filename} Frame:{step}")
 
 
     cv2.imshow('img', image)

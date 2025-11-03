@@ -48,7 +48,7 @@ def analyze_hierarchy(data, indent=0, key_name="ROOT"):
 # --- Main Execution Block ---
 
 # Path to the JSON file you want to analyze
-FILE_PATH = "/Users/franciscojimenez/Desktop/results_GX010591.json"
+FILE_PATH = "/Users/franciscojimenez/Desktop/3d.json"
 
 print("--- JSON HIERARCHY ANALYSIS ---")
 print("Note: For arrays, only the structure of the first element is shown.")
