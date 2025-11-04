@@ -1,7 +1,7 @@
 import cv2
 import os
 
-def split_video_into_frames(video_path, output_dir="frames_output"):
+def split_video_into_frames(type,video_path, output_dir="frames_output"):
     """
     Splits a video file into individual frames and saves them as images.
 
@@ -32,7 +32,7 @@ def split_video_into_frames(video_path, output_dir="frames_output"):
 
         if ret:
             # 4. Construct the output filename
-            frame_filename = os.path.join(output_dir, f"frame_{frame_count:05d}.jpg")
+            frame_filename = os.path.join(output_dir, f"{type}{frame_count:05d}.jpg")
             
             # 5. Save the frame
             cv2.imwrite(frame_filename, frame)
@@ -47,8 +47,8 @@ def split_video_into_frames(video_path, output_dir="frames_output"):
     print(f"\nFinished extracting frames. Total frames saved: {frame_count}")
 
 # --- Example Usage ---
-# NOTE: Replace 'your_video.mp4' with the actual path to your video file.
-video_file = '/Users/franciscojimenez/Desktop/Movie on 10-30-25 at 4.31 PM.mov' 
-output_folder = 'calibration_frames'
+# # NOTE: Replace 'your_video.mp4' with the actual path to your video file.
+# video_file = '/Users/franciscojimenez/Desktop/Movie on 10-30-25 at 4.31 PM.mov' 
+# output_folder = 'calibration_frames'
 
-split_video_into_frames(video_file, output_folder)
+# split_video_into_frames(video_file, output_folder)
