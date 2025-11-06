@@ -14,7 +14,7 @@ def poseestimate(source):
         tracker='botsort.yaml', 
         show=True, 
         conf=0.3, 
-        save=True 
+        save=False 
     )
 
     # --- NEW CODE TO EXTRACT AND OUTPUT DATA (modified to include confidence) ---

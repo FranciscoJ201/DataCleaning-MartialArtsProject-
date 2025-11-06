@@ -3,7 +3,7 @@ import numpy as np
 import glob
 import json
 
-def intrinsic_calb(path,outname):
+def intrinsic_calb(outname):
     # --- Configuration ---
     # Number of inner corners on the checkerboard (e.g., a 7x10 square board has 6x9 inner corners)
     CHECKERBOARD = (6, 9)
