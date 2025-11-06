@@ -12,9 +12,9 @@ REID_PARAMS = (50, 0.25, 1.0, 0.3)
 print("--- STEP 1: Starting Pose Estimation and Data Extraction ---")
 json_out = poseestimate(Source)
 
-print("\n--- STEP 2: Starting Re-Identification (ID Recycling) ---")
-clean_json_out = recycle(json_out, *REID_PARAMS)
+# print("\n--- STEP 2: Starting Re-Identification (ID Recycling) ---")
+# clean_json_out = recycle(json_out, *REID_PARAMS)
 
-print("\n--- STEP 3: Starting 2D Visualization ---")
-plot(clean_json_out)
+# print("\n--- STEP 3: Starting 2D Visualization ---")
+# plot(clean_json_out)
 
