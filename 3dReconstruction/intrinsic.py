@@ -3,7 +3,7 @@ import numpy as np
 import glob
 import json
 
-def intrinsic_calb(outname):
+def intrinsic_calb(path,outname):
     # --- Configuration ---
     # Number of inner corners on the checkerboard (e.g., a 7x10 square board has 6x9 inner corners)
     CHECKERBOARD = (6, 9)
@@ -127,4 +127,3 @@ def intrinsic_calb(outname):
 
     # R and T vectors are lists of vectors, one for each successfully processed image.
     print(f"\nFound {len(r_vecs)} sets of Rotation and Translation Vectors.")
-    return calibration_data
