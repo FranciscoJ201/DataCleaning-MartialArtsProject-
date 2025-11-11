@@ -1,2 +1,5 @@
 3dReconstruction/calibration_frames
 3dReconstruction/calibration_frames2
+**/*.json
+**/*.jpg
+**/*.mp4

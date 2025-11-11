@@ -4,8 +4,8 @@ from extrinsic import extrinstic_calb
 from normalize import undistort_pose_data
 from triangulate import triangulate_3d_pose # <-- NEW IMPORT
 
-video_file = '/Users/franciscojimenez/Desktop/savednew.mp4' 
-video_file2 = '/Users/franciscojimenez/Desktop/laptop.mp4' 
+video_file = '/Users/franciscojimenez/Desktop/saved.mp4' 
+video_file2 = '/Users/franciscojimenez/Desktop/saved.mp4' 
 output_folder_1 = 'calibration_frames_phone' # Left Camera
 output_folder_2 = 'calibration_frames_laptop' # Right Camera
 
@@ -19,20 +19,6 @@ intrinsic_calb(output_folder_2)
 
 # --- 3. Extrinsic Calibration
 extrinstic_calb(output_folder_1, output_folder_2)
-
-
-
-
-
-
-#EVERYTHING UNDER THIS POINT IS NEW ALL EXISTING CODE ABOVE WORKS
-
-
-
-
-
-
-
 
 
 
