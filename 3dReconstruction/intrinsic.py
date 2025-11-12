@@ -8,7 +8,7 @@ def intrinsic_calb(outname):
     # Number of inner corners on the checkerboard (e.g., a 7x10 square board has 6x9 inner corners)
     CHECKERBOARD = (6, 9)
     # Physical size of one square on the checkerboard (in mm, cm, or any consistent unit)
-    SQUARE_SIZE_MM = 25.0  # <--- SET THIS TO THE REAL SIZE OF YOUR SQUARES
+    SQUARE_SIZE_MM = 30.0  # <--- SET THIS TO THE REAL SIZE OF YOUR SQUARES
 
     # Define the termination criteria for the corner refinement (sub-pixel accuracy)
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
