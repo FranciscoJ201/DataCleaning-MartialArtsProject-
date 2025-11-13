@@ -1,7 +1,7 @@
 import json
 from ultralytics import YOLO 
 import numpy as np 
-
+import os
 
 def poseestimate(source):
     # The pose model is still the base model
@@ -16,7 +16,8 @@ def poseestimate(source):
         conf=0.3, 
         save=False 
     )
-
+    base_name = os.path.basename(sor)
+    video_name, _ = os.path.splitext(base_name)
     # --- NEW CODE TO EXTRACT AND OUTPUT DATA (modified to include confidence) ---
     all_detection_data = []
 
@@ -75,7 +76,7 @@ def poseestimate(source):
 
 
     # Optional: Print a summary and save the JSON
-    output_file = 'pose_detection_results.json' # Using the file name the tracker expects
+    output_file = f'{video_name}_pose_detection.json' # Using the file name the tracker expects
     with open(output_file, 'w') as f:
             json.dump(all_detection_data, f, indent=4) 
     print(f"\nData extraction complete. Saved {len(all_detection_data)} detections to {output_file}")

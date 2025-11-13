@@ -8,7 +8,7 @@ import json
 import numpy as np
 from collections import defaultdict, deque
 import math
-
+import os
 def recycle(input, MFGFR, MBJF, MBOS, MBC):
     """
     Reads raw detection data, applies fixed-set Re-ID logic, and saves the tracked results.
@@ -33,7 +33,8 @@ def recycle(input, MFGFR, MBJF, MBOS, MBC):
     MIN_BBOX_CONFIDENCE = MBC        
 
     INPUT_JSON = input
-    OUTPUT_JSON = "recycled_tracked_pose_data.json"
+    video_name, _ = os.path.splitext(input)
+    OUTPUT_JSON = f"RECYCLED_{video_name}_POSE_ESTIMATION.json"
     INITIAL_TRACK_ID = 1 # IDs start from 1
 
     # ----------------------------
