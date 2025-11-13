@@ -3,10 +3,10 @@ import numpy as np
 import glob
 import json
 
-def intrinsic_calb(outname):
+def intrinsic_calb(outname,show_images):
     # --- Configuration ---
     # Number of inner corners on the checkerboard (e.g., a 7x10 square board has 6x9 inner corners)
-    CHECKERBOARD = (6, 9)
+    CHECKERBOARD = (9, 6)
     # Physical size of one square on the checkerboard (in mm, cm, or any consistent unit)
     SQUARE_SIZE_MM = 30.0  # <--- SET THIS TO THE REAL SIZE OF YOUR SQUARES
 
@@ -67,9 +67,9 @@ def intrinsic_calb(outname):
         else:
             print(f"Did not find corners in {filename} Frame:{step}")
 
-
-        cv2.imshow('img', image)
-        cv2.waitKey(500) # Display for 500ms
+        if show_images == True:
+            cv2.imshow('img', image)
+            cv2.waitKey(500) # Display for 500ms
 
     cv2.destroyAllWindows()
 

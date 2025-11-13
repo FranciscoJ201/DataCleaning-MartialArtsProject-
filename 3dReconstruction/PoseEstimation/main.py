@@ -3,7 +3,7 @@ from reid import recycle
 from Plot2d import plot
 
 
-Source = '/Users/franciscojimenez/Desktop/laptop.mp4'
+Source = '/Users/franciscojimenez/Desktop/cam2test.mp4'
 # RE-ID parameters (MFGFR, MBJF, MBOS, MBC)
 # 50 frames gap, 25% screen diagonal jump factor, 1.0 bbox overlap score, 0.3 min confidence
 REID_PARAMS = (50, 0.25, 1.0, 0.3) 

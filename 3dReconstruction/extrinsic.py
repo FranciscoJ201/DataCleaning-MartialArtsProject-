@@ -21,8 +21,8 @@ def extrinstic_calb(path1,path2):
         print('KABOOM')
         exit()
     
-    LEFT_IMAGES_PATH = f'{path1}/left*.jpg'
-    RIGHT_IMAGES_PATH = f'{path2}/right*.jpg'
+    LEFT_IMAGES_PATH = f'{path1}/main*.jpg'
+    RIGHT_IMAGES_PATH = f'{path2}/helper*.jpg'
 
 
     def load_intrinsics(file_path):
