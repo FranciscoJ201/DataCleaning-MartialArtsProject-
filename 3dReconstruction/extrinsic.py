@@ -3,7 +3,7 @@ import numpy as np
 import json
 import glob
 
-def extrinstic_calb(path1,path2):
+def extrinstic_calb(path1,path2,show):
     #have these autofill from json later
     
     INTRINSIC_FILE_1 = f'{path1}.json'
@@ -91,12 +91,12 @@ def extrinstic_calb(path1,path2):
 
             print(f"Found corners in pair: {filename1} and {filename2}")
 
-            #Verification Display
-            img1 = cv2.drawChessboardCorners(img1, CHECKERBOARD, corners1_refined, ret1)
-            img2 = cv2.drawChessboardCorners(img2, CHECKERBOARD, corners2_refined, ret2)
-            cv2.imshow('Left View', img1)
-            cv2.imshow('Right View', img2)
-            cv2.waitKey(100)
+            if show == True:
+                img1 = cv2.drawChessboardCorners(img1, CHECKERBOARD, corners1_refined, ret1)
+                img2 = cv2.drawChessboardCorners(img2, CHECKERBOARD, corners2_refined, ret2)
+                cv2.imshow('Left View', img1)
+                cv2.imshow('Right View', img2)
+                cv2.waitKey(100)
         else:
             print(f"Skipping pair: Corners not found in one or both images {filename1}, {filename2}")
 

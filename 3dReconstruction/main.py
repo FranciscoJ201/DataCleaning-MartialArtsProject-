@@ -36,7 +36,7 @@ intrinsic_calb(output_folder_1,False) #set value to true if you want to show ima
 intrinsic_calb(output_folder_2,False)
 
 # --- 3. Extrinsic Calibration
-extrinstic_calb(output_folder_1, output_folder_2)
+extrinstic_calb(output_folder_1, output_folder_2,False)
 
 
 
