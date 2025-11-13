@@ -34,7 +34,7 @@ def plot_3d_pose(triangulate_json_path, save_image_path="3d_pose_plot.png", edge
         return
 
     # 1. Get the 3D keypoints for the first detected pose
-    keypoints_4d = np.array(data[0]["keypoints_3d_mm"], dtype=np.float64)
+    keypoints_4d = np.array(data[300]["keypoints_3d_mm"], dtype=np.float64)
     x = keypoints_4d[:, 0]
     y = keypoints_4d[:, 1]
     z = keypoints_4d[:, 2]
@@ -105,12 +105,10 @@ def plot_3d_pose(triangulate_json_path, save_image_path="3d_pose_plot.png", edge
     ax.view_init(elev=10, azim=-60)
     
     # 6. Save the plot
-    plt.tight_layout()
-    plt.savefig(save_image_path)
-    plt.close(fig)
+   
+    plt.show()
     
     print(f"\n3D plot successfully saved to {save_image_path}")
-    
 # Example Usage (replace 'path/to/triangulate_output.json' with your actual file)
 if __name__ == '__main__':
     plot_3d_pose('/Users/franciscojimenez/Desktop/DataCleaning-MartialArtsProject-/3d_pose_reconstruction.json')
