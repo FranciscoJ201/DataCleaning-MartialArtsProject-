@@ -111,7 +111,7 @@ def extrinstic_calb(path1,path2,show):
         exit()
 
 
-    print(f'Stating Stereo Calibration with {len(objpoints)} valid pairs')
+    print(f'Starting Stereo Calibration with {len(objpoints)} valid pairs')
 
     #Stereo calibration 
     ret, K1, D1, K2, D2, R, T, E, F = cv2.stereoCalibrate(

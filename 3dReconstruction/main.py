@@ -7,8 +7,8 @@ from PoseEstimation.poseestimation import poseestimate
 from PoseEstimation.reid import recycle
 # from PoseEstimation.Plot2d
 
-video_file = '/Users/franciscojimenez/Desktop/cam1test.mp4' 
-video_file2 = '/Users/franciscojimenez/Desktop/cam2test.mp4' 
+video_file = '/Users/franciscojimenez/Desktop/main.mp4' 
+video_file2 = '/Users/franciscojimenez/Desktop/helper.mp4' 
 output_folder_1 = 'calbFRAMEScam1' # Left Camera
 output_folder_2 = 'calbFRAMEScam2' # Right Camera
 
@@ -28,8 +28,8 @@ clean_json_out2 = recycle(json_out2, *REID_PARAMS)
 
 
 # --- 1. Video Splitting )
-split_video_into_frames('main', video_file, output_folder_1,300) #if you change the string at the start u must update path in extrinsic.py
-split_video_into_frames('helper', video_file2, output_folder_2,300) 
+split_video_into_frames('main', video_file, output_folder_1,600) #if you change the string at the start u must update path in extrinsic.py
+split_video_into_frames('helper', video_file2, output_folder_2,600) 
 
 # --- 2. Intrinsic Calibration
 intrinsic_calb(output_folder_1,False) #set value to true if you want to show images being calibrated but this slows down runtime by 500ms each image
@@ -37,8 +37,6 @@ intrinsic_calb(output_folder_2,False)
 
 # --- 3. Extrinsic Calibration
 extrinstic_calb(output_folder_1, output_folder_2,False)
-
-
 
 #--- 4. Setup for Pose Estimation and Undistortion (You must replace the 'pose_detection_results' files)
 
