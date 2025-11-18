@@ -47,7 +47,7 @@ def get_xyz_from_frame(frame_data):
 
 
 # =========================================================================
-# 2. MAIN PLAYER CLASS (Refactored for List-Based JSON)
+# 2. MAIN PLAYER CLASS (Refactored for Fixed Axis Limits on First Frame)
 # =========================================================================
 
 class ListPose3DPlayer:
@@ -73,6 +73,12 @@ class ListPose3DPlayer:
         self.i = 0 # Current index in the self.frames list
         self.playing = False
         
+        # --- Axis Limits Storage ---
+        # These will store the fixed limits calculated from the first frame only
+        self.fixed_x_lim = None
+        self.fixed_y_lim = None
+        self.fixed_z_lim = None
+        
         # --- Figure & Axes Setup ---
         self.fig = plt.figure(figsize=(10, 8))
         # Adjust subplot for widgets at the bottom
@@ -84,6 +90,11 @@ class ListPose3DPlayer:
         if x is None:
             raise RuntimeError("Could not find 3D keypoint data in the first frame.")
 
+        # --- Axes Limits Setup (REVISED) ---
+        # Calculate and fix the limits based *ONLY* on the first frame (x, y, z)
+        # It now uses a fixed range of 5.0 units.
+        self._set_limits(x, y, z, initial_setup=True) 
+
         # Main keypoint scatter plot
         self.scat = self.ax.scatter(x, y, z, c='blue', marker='o', s=self.point_size)
         
@@ -93,9 +104,6 @@ class ListPose3DPlayer:
             if a < len(x) and b < len(x):
                 ln, = self.ax.plot([x[a], x[b]], [y[a], y[b]], [z[a], z[b]], c='red', linewidth=2)
                 self.lines.append((ln, a, b))
-
-        # --- Axes Limits & Labels ---
-        self._set_limits(x, y, z)
         
         # --- UI Setup (Widgets) ---
         self._add_widgets()
@@ -115,32 +123,44 @@ class ListPose3DPlayer:
         frame_data = self.frames[idx]
         return get_xyz_from_frame(frame_data)
 
-    def _set_limits(self, x, y, z, margin_factor=1.05):
+    def _set_limits(self, x, y, z, margin_factor=1.05, initial_setup=False):
         """
-        Sets cubic limits based on the current data range to prevent
-        the 'pinch' effect from auto-scaling around extreme outliers.
+        Sets cubic limits based on the current data range *only* if initial_setup is True.
+        When initial_setup is True, it uses a fixed range of 5.0 centered on the pose. (MODIFIED)
         """
-        xs = np.array(x); ys = np.array(y); zs = np.array(z)
-        
-        x_range = xs.max() - xs.min()
-        y_range = ys.max() - ys.min()
-        z_range = zs.max() - zs.min()
-        max_range = max(x_range, y_range, z_range)
-        
-        center_x = (xs.max() + xs.min()) / 2.0
-        center_y = (ys.max() + ys.min()) / 2.0
-        center_z = (zs.max() + zs.min()) / 2.0
+        if initial_setup:
+            xs = np.array(x); ys = np.array(y); zs = np.array(z)
+            
+            # --- CALCULATE CENTERS (Based on first frame data) ---
+            center_x = (xs.max() + xs.min()) / 2.0
+            center_y = (ys.max() + ys.min()) / 2.0
+            center_z = (zs.max() + zs.min()) / 2.0
+            
+            # --- USE FIXED RANGE OF 5.0 AS REQUESTED ---
+            FIXED_RANGE = 0.8
+            max_range = FIXED_RANGE # Use 5.0 as the total span
+            
+            # Calculate limit from max_range and margin
+            limit = (max_range / 2.0) * margin_factor
 
-        limit = (max_range / 2.0) * margin_factor
+            # Store the limits for future frames
+            self.fixed_x_lim = (center_x - limit, center_x + limit)
+            self.fixed_y_lim = (center_y - limit, center_y + limit)
+            self.fixed_z_lim = (center_z - limit, center_z + limit)
 
-        self.ax.set_xlim(center_x - limit, center_x + limit)
-        self.ax.set_ylim(center_y - limit, center_y + limit)
-        self.ax.set_zlim(center_z - limit, center_z + limit)
+            # Set the limits on the axes
+            self.ax.set_xlim(*self.fixed_x_lim)
+            self.ax.set_ylim(*self.fixed_y_lim)
+            self.ax.set_zlim(*self.fixed_z_lim)
+            
+            # Labels from your threeDimPlot.py
+            self.ax.set_xlabel("Left-Right Y")
+            self.ax.set_ylabel("Up-Down Z")
+            self.ax.set_zlabel("Forward-Back X")
         
-        # Labels from your threeDimPlot.py
-        self.ax.set_xlabel("Left-Right Y")
-        self.ax.set_ylabel("Up-Down Z")
-        self.ax.set_zlabel("Forward-Back X")
+        # If not initial setup, do nothing to the limits (they remain fixed)
+        pass 
+
 
     # ---------------------------------------------------------------------
     # 2.2. UI AND DRAWING METHODS
@@ -190,8 +210,7 @@ class ListPose3DPlayer:
             else:
                 ln.set_data_3d([], [], [])
 
-        # 3. Update limits
-        self._set_limits(x, y, z)
+        # 3. Update limits (Removed as limits are permanently fixed in __init__)
 
         # 4. Update title and redraw
         self.ax.set_title(f"3D Pose Player — Pose Index {frame_number} (List Index {i})")

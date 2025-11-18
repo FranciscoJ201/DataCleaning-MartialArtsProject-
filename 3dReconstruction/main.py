@@ -17,12 +17,12 @@ output_folder_2 = 'calbFRAMEScam2' # Right Camera
 REID_PARAMS = (50, 0.25, 1.0, 0.3) 
 # ---------------------
 
-print("--- STEP 1: Starting Pose Estimation and Data Extraction ---")
-json_out = poseestimate(video_file)
-json_out2 = poseestimate(video_file2)
-print("\n--- STEP 2: Starting Re-Identification (ID Recycling) ---")
-clean_json_out = recycle(json_out, *REID_PARAMS)
-clean_json_out2 = recycle(json_out2, *REID_PARAMS)
+# print("--- STEP 1: Starting Pose Estimation and Data Extraction ---")
+# json_out = poseestimate(video_file)
+# json_out2 = poseestimate(video_file2)
+# print("\n--- STEP 2: Starting Re-Identification (ID Recycling) ---")
+# clean_json_out = recycle(json_out, *REID_PARAMS)
+# clean_json_out2 = recycle(json_out2, *REID_PARAMS)
 
 
 
@@ -40,43 +40,43 @@ extrinstic_calb(output_folder_1, output_folder_2,False)
 
 #--- 4. Setup for Pose Estimation and Undistortion (You must replace the 'pose_detection_results' files)
 
-# File paths based on your current intrinsic_calb outputs
-CALIBRATION_OUTPUT_FILE_1 = f"{output_folder_1}.json" 
-CALIBRATION_OUTPUT_FILE_2 = f"{output_folder_2}.json" 
-STEREO_CALIBRATION_FILE = "stereo_calibration.json"
+# # File paths based on your current intrinsic_calb outputs
+# CALIBRATION_OUTPUT_FILE_1 = f"{output_folder_1}.json" 
+# CALIBRATION_OUTPUT_FILE_2 = f"{output_folder_2}.json" 
+# STEREO_CALIBRATION_FILE = "stereo_calibration.json"
 
-# **NOTE: These two files must be created by your pose estimator!**
-POSE_ESTIMATION_OUTPUT_FILE_1 = clean_json_out
-POSE_ESTIMATION_OUTPUT_FILE_2 = clean_json_out2
+# # **NOTE: These two files must be created by your pose estimator!**
+# POSE_ESTIMATION_OUTPUT_FILE_1 = clean_json_out
+# POSE_ESTIMATION_OUTPUT_FILE_2 = clean_json_out2
 
-# Final outputs for the undistorted 2D points
-UNDISTORTED_OUTPUT_FILE_1 = "undistorted_pose_data_1.json" 
-UNDISTORTED_OUTPUT_FILE_2 = "undistorted_pose_data_2.json"
+# # Final outputs for the undistorted 2D points
+# UNDISTORTED_OUTPUT_FILE_1 = "undistorted_pose_data_1.json" 
+# UNDISTORTED_OUTPUT_FILE_2 = "undistorted_pose_data_2.json"
 
-# --- 5. Undistort 2D Pose Data for Each Camera
-print("\n--- Starting 2D Pose Undistortion for Camera 1 ---")
-undistort_pose_data(
-    CALIBRATION_OUTPUT_FILE_1, 
-    POSE_ESTIMATION_OUTPUT_FILE_1, 
-    UNDISTORTED_OUTPUT_FILE_1
-)
+# # --- 5. Undistort 2D Pose Data for Each Camera
+# print("\n--- Starting 2D Pose Undistortion for Camera 1 ---")
+# undistort_pose_data(
+#     CALIBRATION_OUTPUT_FILE_1, 
+#     POSE_ESTIMATION_OUTPUT_FILE_1, 
+#     UNDISTORTED_OUTPUT_FILE_1
+# )
 
-print("\n--- Starting 2D Pose Undistortion for Camera 2 ---")
-undistort_pose_data(
-    CALIBRATION_OUTPUT_FILE_2, 
-    POSE_ESTIMATION_OUTPUT_FILE_2, 
-    UNDISTORTED_OUTPUT_FILE_2
-)
+# print("\n--- Starting 2D Pose Undistortion for Camera 2 ---")
+# undistort_pose_data(
+#     CALIBRATION_OUTPUT_FILE_2, 
+#     POSE_ESTIMATION_OUTPUT_FILE_2, 
+#     UNDISTORTED_OUTPUT_FILE_2
+# )
 
-# --- 6. Triangulate to 3D
-FINAL_3D_OUTPUT_FILE = "3d_pose_reconstruction.json"
+# # --- 6. Triangulate to 3D
+# FINAL_3D_OUTPUT_FILE = "3d_pose_reconstruction.json"
 
-print("\n--- Starting 3D Triangulation ---")
-triangulate_3d_pose(
-    CALIBRATION_OUTPUT_FILE_1,
-    CALIBRATION_OUTPUT_FILE_2,
-    STEREO_CALIBRATION_FILE,
-    UNDISTORTED_OUTPUT_FILE_1,
-    UNDISTORTED_OUTPUT_FILE_2,
-    FINAL_3D_OUTPUT_FILE
-)
+# print("\n--- Starting 3D Triangulation ---")
+# triangulate_3d_pose(
+#     CALIBRATION_OUTPUT_FILE_1,
+#     CALIBRATION_OUTPUT_FILE_2,
+#     STEREO_CALIBRATION_FILE,
+#     UNDISTORTED_OUTPUT_FILE_1,
+#     UNDISTORTED_OUTPUT_FILE_2,
+#     FINAL_3D_OUTPUT_FILE
+# )
