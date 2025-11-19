@@ -137,7 +137,7 @@ class ListPose3DPlayer:
             center_z = (zs.max() + zs.min()) / 2.0
             
             # --- USE FIXED RANGE OF 5.0 AS REQUESTED ---
-            FIXED_RANGE = 0.8
+            FIXED_RANGE = 0.5
             max_range = FIXED_RANGE # Use 5.0 as the total span
             
             # Calculate limit from max_range and margin
