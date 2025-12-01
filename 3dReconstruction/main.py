@@ -6,8 +6,8 @@ from triangulate import triangulate_3d_pose # <-- NEW IMPORT
 from PoseEstimation.poseestimation import poseestimate
 from PoseEstimation.reid import recycle
 
-video_file = '/Users/franciscojimenez/Desktop/cam1/test6.MP4' 
-video_file2 = '/Users/franciscojimenez/Desktop/cam2/test6.MP4' 
+video_file = '/Users/franciscojimenez/Desktop/cam1/main1.MP4' 
+video_file2 = '/Users/franciscojimenez/Desktop/cam2/helper1.MP4' 
 output_folder_1 = 'calbFRAMEScam1' # Left Camera
 output_folder_2 = 'calbFRAMEScam2' # Right Camera
 
