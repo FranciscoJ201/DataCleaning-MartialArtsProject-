@@ -6,8 +6,8 @@ from triangulate import triangulate_3d_pose # <-- NEW IMPORT
 from PoseEstimation.poseestimation import poseestimate
 from PoseEstimation.reid import recycle
 
-video_file = '/Users/franciscojimenez/Desktop/main.mp4' 
-video_file2 = '/Users/franciscojimenez/Desktop/helper.mp4' 
+video_file = '/Users/franciscojimenez/Desktop/cam1/test6.MP4' 
+video_file2 = '/Users/franciscojimenez/Desktop/cam2/test6.MP4' 
 output_folder_1 = 'calbFRAMEScam1' # Left Camera
 output_folder_2 = 'calbFRAMEScam2' # Right Camera
 
@@ -23,9 +23,9 @@ print("\n--- STEP 2: Starting Re-Identification (ID Recycling) ---")
 clean_json_out = recycle(json_out, *REID_PARAMS)
 clean_json_out2 = recycle(json_out2, *REID_PARAMS)
 
-# --- 1. Video Splitting )
-split_video_into_frames('main', video_file, output_folder_1,2700) #if you change the string at the start u must update path in extrinsic.py
-split_video_into_frames('helper', video_file2, output_folder_2,2700) 
+# # --- 1. Video Splitting )
+split_video_into_frames('main', video_file, output_folder_1,1300) #if you change the string at the start u must update path in extrinsic.py
+split_video_into_frames('helper', video_file2, output_folder_2,1300) 
 
 # --- 2. Intrinsic Calibration
 intrinsic_calb(output_folder_1,False) #set value to true if you want to show images being calibrated but this slows down runtime by 500ms each image

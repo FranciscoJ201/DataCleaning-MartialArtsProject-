@@ -27,7 +27,7 @@ def recycle(input, MFGFR, MBJF, MBOS, MBC):
     # ----------------------------
     # Tunables are now set by arguments from main.py
     # ----------------------------
-    MAX_FRAME_GAP_FOR_REAPPEARANCE = MFGFR
+    MAX_FRAME_GAP_FOR_REAPPEARANCE = MFGFR 
     MAX_BBOX_JUMP_FACTOR = MBJF          
     MAX_BBOX_OVERLAP_SCORE = MBOS       
     MIN_BBOX_CONFIDENCE = MBC        

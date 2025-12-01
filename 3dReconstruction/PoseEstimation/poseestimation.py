@@ -5,7 +5,7 @@ import os
 
 def poseestimate(source):
     # The pose model is still the base model
-    model = YOLO('yolov8m-pose.pt') 
+    model = YOLO('yolov8n-pose.pt') 
 
     sor= source
     # --- THE KEY CHANGE: USE .track() INSTEAD OF .predict() or model() ---
