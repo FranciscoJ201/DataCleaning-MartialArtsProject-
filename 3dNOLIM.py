@@ -258,10 +258,10 @@ class ListPose3DPlayer:
 
 if __name__ == '__main__':
     # --- IMPORTANT: REPLACE WITH YOUR ACTUAL JSON FILE PATH ---
-    JSON_FILE_PATH = '/Users/franciscojimenez/Desktop/3d_pose_reconstruction.json'
+    JSON_FILE_PATH = '/Users/franciscojimenez/Desktop/DataCleaning-MartialArtsProject-/3d_pose_reconstruction.json'
     
     # *** Set width_multiplier here. 1.0 is no change, 2.0 makes it double-width. ***
-    MULTIPLIER = 0.02
+    MULTIPLIER = 5.0
     
     player = ListPose3DPlayer(
         json_path=JSON_FILE_PATH,

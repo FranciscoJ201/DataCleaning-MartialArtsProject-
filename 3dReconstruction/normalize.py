@@ -23,7 +23,7 @@ def load_calibration_data(calib_file_path):
         
     return K, D
 
-def undistort_pose_data(calibration_file, pose_data_file, output_file):
+def undistort_pose_data(calibration_file, pose_data_file, output_file, reflect_y=False):
     """
     Loads 2D keypoints from pose estimation, corrects them for lens distortion 
     using the intrinsic parameters, and saves the new, normalized coordinates.
@@ -32,6 +32,8 @@ def undistort_pose_data(calibration_file, pose_data_file, output_file):
         calibration_file (str): Path to the JSON file from intrinsic_calb().
         pose_data_file (str): Path to the JSON file from poseestimate().
         output_file (str): Path to save the new undistorted keypoints.
+        reflect_y (bool): If True, the normalized Y-coordinate (Left-Right axis) 
+                          is multiplied by -1 to mirror the view. (NEW)
     """
     
     try:
@@ -60,31 +62,29 @@ def undistort_pose_data(calibration_file, pose_data_file, output_file):
             
         # 1. Prepare data for OpenCV
         # Extract only the (x, y) coordinates. 
-        # The keypoints are [[x1, y1, c1], [x2, y2, c2], ...] where c is confidence or pseudo-z.
         points_2d = np.array([kp[:2] for kp in keypoints_raw], dtype=np.float32)
 
         # Reshape to (N, 1, 2) which is the format cv2.undistortPoints expects
         points_2d = points_2d.reshape(-1, 1, 2)
         
         # 2. Undistort the points
-        # This converts distorted pixel coordinates to normalized, undistorted coordinates.
-        # The resulting coordinates (x', y') are what the point would look like 
-        # on an image plane in a perfectly pinhole camera model.
-        # This is ideal for 3D reconstruction.
         undistorted_norm = cv2.undistortPoints(points_2d, K, D, P=None, R=None)
         
         # Reshape back to (N, 2)
         undistorted_norm = undistorted_norm.reshape(-1, 2)
 
-        # 3. Recombine with original confidence/pseudo-z value
+        # 3. Recombine with original confidence/pseudo-z value AND APPLY REFLECTION
         undistorted_keypoints = []
         for i in range(len(keypoints_raw)):
-            # Original keypoint: [x_distorted, y_distorted, confidence/z]
-            # Undistorted keypoint: [x_norm, y_norm, confidence/z]
             
             # Use the normalized coordinates (x_norm, y_norm)
             x_norm = float(undistorted_norm[i, 0])
             y_norm = float(undistorted_norm[i, 1])
+            
+            # ** CRITICAL FIX: APPLY Y-AXIS REFLECTION (MIRRORING) **
+            if reflect_y:
+                # Multiply Y-coordinate by -1 to flip the Left/Right perspective
+                y_norm = -y_norm
             
             # Retain the confidence/z-value from the original data
             conf = float(keypoints_raw[i][2])
@@ -102,5 +102,3 @@ def undistort_pose_data(calibration_file, pose_data_file, output_file):
     
     print(f"\nUndistortion complete. Saved {len(undistorted_detections)} records to {output_file}")
     print("\nNext Step: These normalized keypoints are now ready for 3D reconstruction/triangulation.")
-
-
