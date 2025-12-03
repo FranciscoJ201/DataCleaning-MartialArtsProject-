@@ -5,7 +5,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.widgets import Button, Slider
 
 # =========================================================================
-# 1. CONSTANTS AND DATA LOADING HELPERS (MODIFIED)
+# 1. CONSTANTS AND DATA LOADING HELPERS
 # =========================================================================
 
 # The custom skeleton edges you provided in your original script
@@ -18,11 +18,7 @@ SKELETON_EDGES = [
 
 def load_frames(json_path):
     """
-    Loads 3D keypoint data from a JSON file.
-    
-    MODIFIED: This now extracts the *first person's* keypoints data
-    from the 'detections' list in each frame object.
-    The resulting list will hold the object containing the 'keypoints_3d_m'.
+    Loads 3D keypoint data from a JSON file, extracting the first person's detections.
     """
     try:
         with open(json_path, "r") as f:
@@ -30,14 +26,12 @@ def load_frames(json_path):
             if not isinstance(data, list):
                  raise TypeError("JSON content must be a list of frame objects.")
                  
-            # Extract the relevant data block for the first person in each frame
             processed_frames = []
             for frame in data:
                 detections = frame.get("detections")
                 if detections and isinstance(detections, list) and len(detections) > 0:
                     # Assuming we are interested in the first detected person (index 0)
                     keypoint_data = detections[0]
-                    # Also transfer the original frame index for the title
                     keypoint_data["pose_index"] = frame.get("frame_index")
                     processed_frames.append(keypoint_data)
                     
@@ -50,24 +44,22 @@ def get_xyz_from_frame(frame_data):
     """
     Extracts (x, y, z) arrays from a single frame dictionary.
     
-    MODIFIED: Keypoint structure is now 'keypoints_3d_m' and we slice out 
-    the 4th confidence value.
+    NOTE: np.array(..., dtype=float) correctly converts [..., None, ...] to [..., nan, ...].
     """
-    # Key name changed from 'keypoints_3d_mm' to 'keypoints_3d_m' based on user's sample
     kp = frame_data.get("keypoints_3d_m") 
     
     if isinstance(kp, list) and kp and isinstance(kp[0], list) and len(kp[0]) >= 4:
         kp_array = np.array(kp, dtype=float)
         
         # Take the first 3 columns (x, y, z), ignoring the 4th (confidence)
-        # Note: The order in your example is X, Y, Z.
+        # These arrays will contain np.nan for missing points.
         return kp_array[:, 0], kp_array[:, 1], kp_array[:, 2]
     
     return None, None, None
 
 
 # =========================================================================
-# 2. MAIN PLAYER CLASS (Refactored for Fixed Axis Limits on First Frame)
+# 2. MAIN PLAYER CLASS
 # =========================================================================
 
 class ListPose3DPlayer:
@@ -79,7 +71,7 @@ class ListPose3DPlayer:
         point_size=50
     ):
         # --- Config & Data Loading ---
-        self.frames = load_frames(json_path) # frames is now a list
+        self.frames = load_frames(json_path)
         self.num_frames = len(self.frames)
         if self.num_frames == 0:
             raise RuntimeError("No frames found or no detections with keypoints found in JSON.")
@@ -89,12 +81,11 @@ class ListPose3DPlayer:
         self.interval = int(1000 / self.fps)
         self.point_size = point_size
         
-        # --- Scaling Factor (NEW) ---
-        # Data is in meters, so we convert to millimeters (or arbitrary larger unit) for better plot range/scaling
+        # --- Scaling Factor ---
         self.scale_factor = 1000.0 
         
         # --- State Variables ---
-        self.i = 0 # Current index in the self.frames list
+        self.i = 0 
         self.playing = False
         
         # --- Axis Limits Storage ---
@@ -104,34 +95,37 @@ class ListPose3DPlayer:
         
         # --- Figure & Axes Setup ---
         self.fig = plt.figure(figsize=(10, 8))
-        # Adjust subplot for widgets at the bottom
         plt.subplots_adjust(bottom=0.20) 
         self.ax = self.fig.add_subplot(111, projection="3d")
 
         # --- Initial Frame Data & Artists ---
         x, y, z = self._get_xyz(self.i)
         
-        # Apply scaling to the initial data (NEW)
+        # Apply scaling to the initial data (NaNs remain NaNs)
         if x is not None:
+            # Note: np.nan * 1000.0 = np.nan, so this is safe
             x, y, z = x * self.scale_factor, y * self.scale_factor, z * self.scale_factor
         
         if x is None:
             raise RuntimeError("Could not find 3D keypoint data in the first frame.")
 
-        # --- Axes Limits Setup (REVISED) ---
-        # Calculate and fix the limits based *ONLY* on the first frame (x, y, z)
-        # It now uses a fixed range of 5.0 units.
+        # --- Axes Limits Setup (FIXED) ---
+        # Calculates limits ignoring NaNs in the first frame
         self._set_limits(x, y, z, initial_setup=True) 
 
+        # Filter NaNs for initial plotting
+        valid_mask = np.isfinite(x) & np.isfinite(y) & np.isfinite(z)
+        x_valid, y_valid, z_valid = x[valid_mask], y[valid_mask], z[valid_mask]
+        
         # Main keypoint scatter plot
-        self.scat = self.ax.scatter(x, y, z, c='blue', marker='o', s=self.point_size)
+        self.scat = self.ax.scatter(x_valid, y_valid, z_valid, c='blue', marker='o', s=self.point_size)
         
         # Standard connections (lines for edges)
         self.lines = []
         for (a, b) in self.edges:
-            if a < len(x) and b < len(x):
-                ln, = self.ax.plot([x[a], x[b]], [y[a], y[b]], [z[a], z[b]], c='red', linewidth=2)
-                self.lines.append((ln, a, b))
+            # Initialize with empty data (will be populated in _draw_frame)
+            ln, = self.ax.plot([], [], [], c='red', linewidth=2)
+            self.lines.append((ln, a, b))
         
         # --- UI Setup (Widgets) ---
         self._add_widgets()
@@ -153,23 +147,29 @@ class ListPose3DPlayer:
 
     def _set_limits(self, x, y, z, margin_factor=1.05, initial_setup=False):
         """
-        Sets cubic limits based on the current data range *only* if initial_setup is True.
-        When initial_setup is True, it uses a fixed range of 5.0 centered on the pose. (MODIFIED)
+        Sets cubic limits based on the first frame data, ignoring NaNs. (FIXED)
         """
         if initial_setup:
             xs = np.array(x); ys = np.array(y); zs = np.array(z)
             
-            # --- CALCULATE CENTERS (Based on first frame data) ---
-            center_x = (xs.max() + xs.min()) / 2.0
-            center_y = (ys.max() + ys.min()) / 2.0
-            center_z = (zs.max() + zs.min()) / 2.0
+            # --- CALCULATE MIN/MAX/CENTER using nanmax/nanmin (THE FIX) ---
+            x_min, x_max = np.nanmin(xs), np.nanmax(xs)
+            y_min, y_max = np.nanmin(ys), np.nanmax(ys)
+            z_min, z_max = np.nanmin(zs), np.nanmax(zs)
             
-            # --- USE FIXED RANGE OF 5.0 AS REQUESTED (MODIFIED: changed from 5.0 to 5000.0 because of scale factor) ---
-            # Use a fixed range of 5.0 meters, which is 5000 units after scaling.
+            # Check if any valid points exist
+            if np.isnan(x_min) or np.isnan(x_max):
+                 # Fallback if ALL 17 points are missing in the first frame
+                 raise RuntimeError("All keypoints in the first frame are invalid (NaN). Cannot set plot limits.")
+
+            center_x = (x_max + x_min) / 2.0
+            center_y = (y_max + y_min) / 2.0
+            center_z = (z_max + z_min) / 2.0
+            
+            # --- USE FIXED RANGE (5000 units = 5.0 meters) ---
             FIXED_RANGE = 5000.0 
-            max_range = FIXED_RANGE # Use 5000.0 as the total span
+            max_range = FIXED_RANGE 
             
-            # Calculate limit from max_range and margin
             limit = (max_range / 2.0) * margin_factor
 
             # Store the limits for future frames
@@ -182,12 +182,11 @@ class ListPose3DPlayer:
             self.ax.set_ylim(*self.fixed_y_lim)
             self.ax.set_zlim(*self.fixed_z_lim)
             
-            # Labels from your threeDimPlot.py
-            self.ax.set_xlabel("Left-Right X") # Updated based on common 3D convention/your example data
-            self.ax.set_ylabel("Up-Down Y")    # Updated
-            self.ax.set_zlabel("Forward-Back Z") # Updated
+            # Labels
+            self.ax.set_xlabel("Left-Right X")
+            self.ax.set_ylabel("Up-Down Y")
+            self.ax.set_zlabel("Forward-Back Z")
         
-        # If not initial setup, do nothing to the limits (they remain fixed)
         pass 
 
 
@@ -220,7 +219,7 @@ class ListPose3DPlayer:
         # Get the frame number from the current frame object
         frame_number = self.frames[i].get("pose_index", i)
         
-        # Apply scaling to the current frame data (NEW)
+        # Apply scaling to the current frame data
         if x is not None:
             x, y, z = x * self.scale_factor, y * self.scale_factor, z * self.scale_factor
         
@@ -232,15 +231,25 @@ class ListPose3DPlayer:
             self.fig.canvas.draw_idle()
             return
 
-        # 1. Update scatter plot
-        self.scat._offsets3d = (x, y, z)
+        # Filter NaNs (missing keypoints) for scatter plot update
+        valid_mask = np.isfinite(x) & np.isfinite(y) & np.isfinite(z)
+        x_valid, y_valid, z_valid = x[valid_mask], y[valid_mask], z[valid_mask]
+        
+        # 1. Update scatter plot (only drawing valid points)
+        self.scat._offsets3d = (x_valid, y_valid, z_valid)
 
-        # 2. Update standard lines (Edges)
+        # 2. Update standard lines (Edges) (FIXED to check for NaN)
         n = len(x)
         for ln, a, b in self.lines:
-            if a < n and b < n:
+            # Check array bounds (should be 17 always) AND check if both points are valid (not NaN)
+            if (a < n and b < n and 
+                np.isfinite(x[a]) and np.isfinite(x[b]) and 
+                np.isfinite(y[a]) and np.isfinite(y[b]) and 
+                np.isfinite(z[a]) and np.isfinite(z[b])):
+                
                 ln.set_data_3d([x[a], x[b]], [y[a], y[b]], [z[a], z[b]])
             else:
+                # Hide the line segment if either endpoint is missing/NaN
                 ln.set_data_3d([], [], [])
 
         # 3. Update title and redraw
@@ -283,8 +292,7 @@ class ListPose3DPlayer:
 
 
 if __name__ == '__main__':
-    # --- IMPORTANT: REPLACE WITH YOUR ACTUAL JSON FILE PATH ---
-    JSON_FILE_PATH = '/Users/franciscojimenez/Desktop/DataCleaning-MartialArtsProject-/realsense_output/3d_pose_reconstruction.json'
+    JSON_FILE_PATH = 'realsense_output1/3d_pose_reconstruction.json'
     
     player = ListPose3DPlayer(
         json_path=JSON_FILE_PATH,
