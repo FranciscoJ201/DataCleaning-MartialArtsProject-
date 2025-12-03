@@ -15,7 +15,7 @@ print(f"Output directory created: {OUTPUT_DIR}")
 # --- CAMERA/YOLO CONFIG ---
 model = YOLO('yolov8n-pose.pt') 
 W, H = 640, 480
-FPS = 10
+FPS = 30
 CONFIDENCE_THRESHOLD = 0.5 # Added minimum confidence for a keypoint to be processed
 
 # Start the RealSense pipeline
