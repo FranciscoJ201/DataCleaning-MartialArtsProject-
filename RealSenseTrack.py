@@ -6,9 +6,6 @@ import time
 import os
 import json 
 
-# =========================================================================
-# 0. CONFIGURATION AND INITIAL SETUP
-# =========================================================================
 
 # --- OUTPUT DIRECTORY CONFIGURATION ---
 OUTPUT_DIR = "realsense_output"
@@ -41,7 +38,7 @@ cy = color_intrinsics.ppy
 
 print(f"RealSense Intrinsics loaded: fx={fx:.2f}, fy={fy:.2f}, cx={cx:.2f}, cy={cy:.2f}")
 
-# Create an align object: crucial for mapping Depth to Color pixels
+# Create an align object for mapping Depth to Color pixels
 align_to = rs.stream.color
 align = rs.align(align_to)
 
