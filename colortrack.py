@@ -37,8 +37,9 @@ while True:
                 cX = int(M["m10"] / M["m00"])
                 cY = int(M["m01"] / M["m00"])
                 center = (cX, cY)
-
-               
+                
+                cv2.circle(frame,center,5,(0,0,255),-1)
+                cv2.line(frame,(center_frame_x,center_frame_y),center,(0,255,0),2)
 
                 print(f"Object Center: {center} | Offset: ({cX-center_frame_x}, {cY-center_frame_y})")
 
