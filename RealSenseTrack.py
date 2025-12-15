@@ -7,16 +7,27 @@ import os
 import json 
 
 
-# --- OUTPUT DIRECTORY CONFIGURATION ---
-OUTPUT_DIR = "realsense_output"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-print(f"Output directory created: {OUTPUT_DIR}")
-#lol
 # --- CAMERA/YOLO CONFIG ---
-model = YOLO('yolov8n-pose.pt') 
+OUTPUT_DIR = 'realsense_recordings'
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+ENGINE_PATH = 'yolo11x-pose.engine' # Define the expected engine file name
+DEPTH_DIR = os.path.join(OUTPUT_DIR, "depth_maps")
+os.makedirs(DEPTH_DIR, exist_ok=True)
+
+if not os.path.exists(ENGINE_PATH):
+    print(f"Engine file not found. Exporting to {ENGINE_PATH}...")
+    # This line creates the engine file
+    model = YOLO('yolo11x-pose.pt')
+    model.export(format='engine', half=True)
+else:
+    print(f"Loading existing engine: {ENGINE_PATH}")
+    # This line loads the optimized engine file directly
+    model = YOLO(ENGINE_PATH)
+
 W, H = 640, 480
 FPS = 30
-CONFIDENCE_THRESHOLD = 0.5 # Added minimum confidence for a keypoint to be processed
+CONFIDENCE_THRESHOLD = 0.1
 
 # Start the RealSense pipeline
 pipeline = rs.pipeline()

@@ -7,7 +7,7 @@ while True:
     ret, frame = cap.read()
     if not ret:
         break
-    #TEST
+
     # Frame dimensions
     height, width, _ = frame.shape
     center_frame_x = width // 2
