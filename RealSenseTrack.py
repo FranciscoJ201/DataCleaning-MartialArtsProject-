@@ -11,7 +11,7 @@ import json
 OUTPUT_DIR = "realsense_output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 print(f"Output directory created: {OUTPUT_DIR}")
-
+#lol
 # --- CAMERA/YOLO CONFIG ---
 model = YOLO('yolov8n-pose.pt') 
 W, H = 640, 480
