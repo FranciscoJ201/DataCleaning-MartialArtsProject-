@@ -2,3 +2,6 @@
 **/*.jpg
 **/*.mp4
 realsense_output
+**/*.pt
+**/*.onnx
+**/*.engine
