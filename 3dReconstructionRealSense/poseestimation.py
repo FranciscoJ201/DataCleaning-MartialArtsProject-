@@ -82,4 +82,75 @@ def poseestimateCPU(source):
     return output_file
 
 def poseestimateGPU(source):
-    pass
+    """
+    Identical logic to CPU function but optimized for NVIDIA GPU execution.
+    Targeted for high-performance inference on your RTX 5080.
+    """
+    # 1. LOAD MODEL ON GPU
+    # It is recommended to use 'yolo11x-pose.engine' here if you have it 
+    model = YOLO('yolo11x-pose.pt').to('cuda') 
+    
+    # 2. RUN TRACKING
+    # device=0 ensures GPU usage; half=True enables FP16 for speed
+    results = model.track(
+        source=source, 
+        tracker='botsort.yaml', 
+        show=True, 
+        conf=0.3, 
+        save=False,
+        device=0,
+        half=True 
+    )
+
+    base_name = os.path.basename(source)
+    video_name, _ = os.path.splitext(base_name)
+
+    all_detection_data = []
+
+    for i, result in enumerate(results):
+        # Safety checks (same as CPU version)
+        if result.keypoints.data.numel() == 0 or result.boxes.data.numel() == 0:
+            continue
+
+        # Move tensors to CPU once for data extraction
+        track_ids = result.boxes.id
+        keypoints_tensor = result.keypoints.data.cpu().numpy()
+        box_data = result.boxes.data.cpu().numpy() 
+        boxes_xywh = result.boxes.xywh.cpu().numpy()
+
+        # Prepare Track IDs
+        if track_ids is None:
+            track_ids_list = [-1] * len(keypoints_tensor)
+        else:
+            track_ids_list = track_ids.cpu().numpy().astype(int).tolist()
+
+        # Iterate through each person (detection) in the frame
+        for j, keypoint_array in enumerate(keypoints_tensor):
+            
+            track_id = track_ids_list[j] if j < len(track_ids_list) else -1
+            box_xywh = boxes_xywh[j].round(1).tolist()
+            
+            # Confidence extraction (index 4)
+            confidence = 0.0 
+            if box_data.shape[1] > 4:
+                confidence = float(box_data[j, 4])
+            else:
+                confidence = 1.0 
+
+            # Create the digestable dictionary for JSON
+            detection_record = {
+                "frame_index": i,
+                "track_id_native": track_id,
+                "bbox_xywh": box_xywh,
+                "conf": confidence,
+                "keypoints_xyz": keypoint_array.tolist() 
+            }
+            all_detection_data.append(detection_record)
+
+    # Save the JSON (matches the CPU output naming convention)
+    output_file = f'{video_name}_gpu_pose_detection.json'
+    with open(output_file, 'w') as f:
+            json.dump(all_detection_data, f, indent=4) 
+            
+    print(f"\nGPU Extraction complete. Saved {len(all_detection_data)} detections to {output_file}")
+    return output_file
