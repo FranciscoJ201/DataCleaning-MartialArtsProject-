@@ -18,7 +18,7 @@ else:
     model.export(format='engine', half=True, device=0)
     
     if os.path.exists(ENGINE_FILE):
-        print(f"\n✅ SUCCESS: TensorRT engine created at: {os.path.abspath(ENGINE_FILE)}")
+        print(f"\n SUCCESS: TensorRT engine created at: {os.path.abspath(ENGINE_FILE)}")
         print("You can now run your main RealSense script.")
     else:
-        print("\n❌ FAILED: The engine file was not created. Check your CUDA/TensorRT setup.")
+        print("\n FAILED: The engine file was not created. Check your CUDA/TensorRT setup.")
