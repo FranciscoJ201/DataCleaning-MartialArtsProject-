@@ -83,64 +83,64 @@ def poseestimateCPU(source):
 
 def poseestimateGPU(source):
     """
-    Identical logic to RealSenseTrack.py but for video files.
-    Uses model.predict() instead of tracking for maximum speed on RTX 5080.
+    Identical logic to RealSenseTrack.py but for standard video files.
+    Uses frame-index based 'tracking' (pid) instead of BoT-SORT.
     """
     # 1. OPTIMIZED MODEL LOADING (Matches RealSenseTrack.py)
     engine_path = 'yolo11x-pose.engine'
     if not os.path.exists(engine_path):
         print(f"Exporting optimized GPU engine: {engine_path}...")
         model = YOLO('yolo11x-pose.pt')
-        # Exporting with half=True for FP16 speed boost
         model.export(format='engine', half=True, device=0) 
-    
-    model = YOLO(engine_path)
+    else:
+        model = YOLO(engine_path)
 
     base_name = os.path.basename(source)
     video_name, _ = os.path.splitext(base_name)
     all_detection_data = []
 
-    # 2. RUN INFERENCE (Uses predict() just like RealSenseTrack.py)
-    # stream=True is used to yield results frame-by-frame for efficiency
+    # 2. RUN INFERENCE (Uses model.predict() like RealSenseTrack.py)
+    # stream=True processes the video frame-by-frame for maximum 5080 speed
     results_generator = model.predict(
         source=source, 
         conf=0.3, 
-        device=0,      # Explicitly use RTX 5080
-        half=True,    # Use FP16 precision for speed
-        stream=True,   # Memory-efficient generator
-        show=True      # Show the window while processing
+        device=0,      # RTX 5080
+        half=True,    # FP16
+        stream=True,   
+        show=True      
     )
 
-    print("GPU Processing started (No Tracker)...")
+    print("GPU Processing started (Manual ID Tracking)...")
     
     for i, result in enumerate(results_generator):
-        # 3. SAFETY CHECK (Matches RealSenseTrack.py logic)
+        # 3. SAFETY CHECK
         if result.keypoints is None or result.keypoints.data.numel() == 0:
             continue
 
-        # 4. DATA EXTRACTION LOGIC (Copied from your tracking results)
-        # We move data to CPU in one batch for speed
+        # 4. DATA EXTRACTION (Identical pid logic to RealSenseTrack.py)
+        # result.keypoints.data contains the [x, y, conf] for each person
         keypoints_tensor = result.keypoints.data.cpu().numpy()
         box_data = result.boxes.data.cpu().numpy() 
 
-        for j, keypoint_array in enumerate(keypoints_tensor):
-            # Since tracking is removed, we use a default ID or index
-            person_id = j 
+        # We use 'pid' (the index in the detections list) just like your script
+        for pid, keypoint_array in enumerate(keypoints_tensor):
             
-            # Extract confidence and bounding box (xywh)
-            confidence = float(box_data[j, 4]) if box_data.shape[1] > 4 else 1.0
-            box_xywh = result.boxes.xywh[j].cpu().numpy().round(1).tolist()
+            # Confidence at index 4 of box_data
+            confidence = float(box_data[pid, 4]) if box_data.shape[1] > 4 else 1.0
+            
+            # Bounding box xywh
+            box_xywh = result.boxes.xywh[pid].cpu().numpy().round(1).tolist()
 
             all_detection_data.append({
                 "frame_index": i,
-                "person_id": person_id,
+                "person_id": pid,            # Matches your 'pid' logic
                 "bbox_xywh": box_xywh,
                 "conf": confidence,
                 "keypoints_xyz": keypoint_array.tolist() 
             })
 
     # 5. SAVE OUTPUT
-    output_file = f'{video_name}_gpu_pose_predict.json'
+    output_file = f'{video_name}_gpu_manual_pose.json'
     with open(output_file, 'w') as f:
         json.dump(all_detection_data, f, indent=4) 
             
