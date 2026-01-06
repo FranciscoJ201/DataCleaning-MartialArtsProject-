@@ -16,8 +16,11 @@ output_folder_2 = 'calbFRAMEScam2' # Right Camera
 REID_PARAMS = (50, 0.25, 1.0, 0.3) 
 
 print("STARTING POSE ESTIMATION PROCESS")
-# json_out = poseestimateCPU(video_file)
-# json_out2 = poseestimateCPU(video_file2)
+#take in the PoseEstimations from RealSenseTrack
+
+realsenseINPUT = 'realsense_recordings/3d_pose_data.json'
+
+#json_out2 = poseestimateCPU(video_file2)
 print("\n STARTING RE-ID PROCESS")
 # clean_json_out = recycle(json_out, *REID_PARAMS)
 # clean_json_out2 = recycle(json_out2, *REID_PARAMS)
