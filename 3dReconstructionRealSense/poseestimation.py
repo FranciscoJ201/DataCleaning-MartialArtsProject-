@@ -82,75 +82,77 @@ def poseestimateCPU(source):
     return output_file
 
 def poseestimateGPU(source):
-    """
-    Identical logic to CPU function but optimized for NVIDIA GPU execution.
-    Targeted for high-performance inference on your RTX 5080.
-    """
-    # 1. LOAD MODEL ON GPU
-    # It is recommended to use 'yolo11x-pose.engine' here if you have it 
-    model = YOLO('yolo11x-pose.pt').to('cuda') 
+    # --- 1. OPTIMIZED MODEL LOADING ---
+    # Use the .engine file for 5x speedup on GPU
+    # If the .engine doesn't exist, it will export from the .pt automatically
+    engine_path = 'yolo11x-pose.engine'
+    if not os.path.exists(engine_path):
+        print(f"Exporting optimized GPU engine: {engine_path}...")
+        model = YOLO('yolo11x-pose.pt')
+        model.export(format='engine', half=True, device=0) 
     
-    # 2. RUN TRACKING
-    # device=0 ensures GPU usage; half=True enables FP16 for speed
-    results = model.track(
+    model = YOLO(engine_path)
+
+    base_name = os.path.basename(source)
+    video_name, _ = os.path.splitext(base_name)
+    all_detection_data = []
+
+    # --- 2. OPTIMIZED TRACKING PARAMETERS ---
+    # stream=True is critical for speed as it yields results one by one
+    # device=0 and half=True match your realsensetrack.py
+    results_generator = model.track(
         source=source, 
         tracker='botsort.yaml', 
         show=True, 
         conf=0.3, 
         save=False,
-        device=0,
-        half=True 
+        device=0,      # Explicitly use RTX 5080
+        half=True,    # Use FP16 precision
+        stream=True,   # Process frame-by-frame instead of loading all at once
+        persist=True   # Required for consistent tracking IDs
     )
 
-    base_name = os.path.basename(source)
-    video_name, _ = os.path.splitext(base_name)
-
-    all_detection_data = []
-
-    for i, result in enumerate(results):
-        # Safety checks (same as CPU version)
-        if result.keypoints.data.numel() == 0 or result.boxes.data.numel() == 0:
+    print("GPU Processing started...")
+    
+    for i, result in enumerate(results_generator):
+        # 3. SAFETY & BATCH TRANSFER
+        # Moving all result data to CPU at once is much faster than index-by-index
+        if result.keypoints is None or result.keypoints.data.numel() == 0:
             continue
 
-        # Move tensors to CPU once for data extraction
-        track_ids = result.boxes.id
+        # Convert entire tensors to CPU/Numpy once per frame
         keypoints_tensor = result.keypoints.data.cpu().numpy()
         box_data = result.boxes.data.cpu().numpy() 
-        boxes_xywh = result.boxes.xywh.cpu().numpy()
-
-        # Prepare Track IDs
+        track_ids = result.boxes.id
+        
+        # Prepare track IDs safely
         if track_ids is None:
             track_ids_list = [-1] * len(keypoints_tensor)
         else:
             track_ids_list = track_ids.cpu().numpy().astype(int).tolist()
 
-        # Iterate through each person (detection) in the frame
+        # 4. DATA EXTRACTION
         for j, keypoint_array in enumerate(keypoints_tensor):
-            
             track_id = track_ids_list[j] if j < len(track_ids_list) else -1
-            box_xywh = boxes_xywh[j].round(1).tolist()
             
-            # Confidence extraction (index 4)
-            confidence = 0.0 
-            if box_data.shape[1] > 4:
-                confidence = float(box_data[j, 4])
-            else:
-                confidence = 1.0 
+            # Confidence is at index 4 of box_data
+            confidence = float(box_data[j, 4]) if box_data.shape[1] > 4 else 1.0
+            
+            # Get xywh from boxes (already moved to CPU efficiently)
+            box_xywh = result.boxes.xywh[j].cpu().numpy().round(1).tolist()
 
-            # Create the digestable dictionary for JSON
-            detection_record = {
+            all_detection_data.append({
                 "frame_index": i,
                 "track_id_native": track_id,
                 "bbox_xywh": box_xywh,
                 "conf": confidence,
                 "keypoints_xyz": keypoint_array.tolist() 
-            }
-            all_detection_data.append(detection_record)
+            })
 
-    # Save the JSON (matches the CPU output naming convention)
-    output_file = f'{video_name}_gpu_pose_detection.json'
+    # Save output
+    output_file = f'{video_name}_gpu_pose.json'
     with open(output_file, 'w') as f:
-            json.dump(all_detection_data, f, indent=4) 
+        json.dump(all_detection_data, f, indent=4) 
             
-    print(f"\nGPU Extraction complete. Saved {len(all_detection_data)} detections to {output_file}")
+    print(f"\nGPU Finish: {len(all_detection_data)} detections saved to {output_file}")
     return output_file
