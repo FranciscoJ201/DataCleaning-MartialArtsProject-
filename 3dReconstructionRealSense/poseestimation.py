@@ -82,14 +82,17 @@ def poseestimateCPU(source):
     return output_file
 
 def poseestimateGPU(source):
-    # --- 1. OPTIMIZED MODEL LOADING ---
-    # Use the .engine file for 5x speedup on GPU
-    # If the .engine doesn't exist, it will export from the .pt automatically
+    """
+    Identical logic to RealSenseTrack.py but for video files.
+    Uses model.predict() instead of tracking for maximum speed on RTX 5080.
+    """
+    # 1. OPTIMIZED MODEL LOADING (Matches RealSenseTrack.py)
     engine_path = 'yolo11x-pose.engine'
     if not os.path.exists(engine_path):
         print(f"Exporting optimized GPU engine: {engine_path}...")
         model = YOLO('yolo11x-pose.pt')
-        model.export(format='engine', half=True) 
+        # Exporting with half=True for FP16 speed boost
+        model.export(format='engine', half=True, device=0) 
     
     model = YOLO(engine_path)
 
@@ -97,60 +100,47 @@ def poseestimateGPU(source):
     video_name, _ = os.path.splitext(base_name)
     all_detection_data = []
 
-    # --- 2. OPTIMIZED TRACKING PARAMETERS ---
-    # stream=True is critical for speed as it yields results one by one
-    # device=0 and half=True match your realsensetrack.py
-    results_generator = model.track(
+    # 2. RUN INFERENCE (Uses predict() just like RealSenseTrack.py)
+    # stream=True is used to yield results frame-by-frame for efficiency
+    results_generator = model.predict(
         source=source, 
-        tracker='botsort.yaml', 
-        show=True, 
         conf=0.3, 
-        save=False,
         device=0,      # Explicitly use RTX 5080
-        half=True,    # Use FP16 precision
-        stream=True,   # Process frame-by-frame instead of loading all at once
-        persist=True   # Required for consistent tracking IDs
+        half=True,    # Use FP16 precision for speed
+        stream=True,   # Memory-efficient generator
+        show=True      # Show the window while processing
     )
 
-    print("GPU Processing started...")
+    print("GPU Processing started (No Tracker)...")
     
     for i, result in enumerate(results_generator):
-        # 3. SAFETY & BATCH TRANSFER
-        # Moving all result data to CPU at once is much faster than index-by-index
+        # 3. SAFETY CHECK (Matches RealSenseTrack.py logic)
         if result.keypoints is None or result.keypoints.data.numel() == 0:
             continue
 
-        # Convert entire tensors to CPU/Numpy once per frame
+        # 4. DATA EXTRACTION LOGIC (Copied from your tracking results)
+        # We move data to CPU in one batch for speed
         keypoints_tensor = result.keypoints.data.cpu().numpy()
         box_data = result.boxes.data.cpu().numpy() 
-        track_ids = result.boxes.id
-        
-        # Prepare track IDs safely
-        if track_ids is None:
-            track_ids_list = [-1] * len(keypoints_tensor)
-        else:
-            track_ids_list = track_ids.cpu().numpy().astype(int).tolist()
 
-        # 4. DATA EXTRACTION
         for j, keypoint_array in enumerate(keypoints_tensor):
-            track_id = track_ids_list[j] if j < len(track_ids_list) else -1
+            # Since tracking is removed, we use a default ID or index
+            person_id = j 
             
-            # Confidence is at index 4 of box_data
+            # Extract confidence and bounding box (xywh)
             confidence = float(box_data[j, 4]) if box_data.shape[1] > 4 else 1.0
-            
-            # Get xywh from boxes (already moved to CPU efficiently)
             box_xywh = result.boxes.xywh[j].cpu().numpy().round(1).tolist()
 
             all_detection_data.append({
                 "frame_index": i,
-                "track_id_native": track_id,
+                "person_id": person_id,
                 "bbox_xywh": box_xywh,
                 "conf": confidence,
                 "keypoints_xyz": keypoint_array.tolist() 
             })
 
-    # Save output
-    output_file = f'{video_name}_gpu_pose.json'
+    # 5. SAVE OUTPUT
+    output_file = f'{video_name}_gpu_pose_predict.json'
     with open(output_file, 'w') as f:
         json.dump(all_detection_data, f, indent=4) 
             
