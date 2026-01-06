@@ -89,7 +89,7 @@ def poseestimateGPU(source):
     if not os.path.exists(engine_path):
         print(f"Exporting optimized GPU engine: {engine_path}...")
         model = YOLO('yolo11x-pose.pt')
-        model.export(format='engine', half=True, device=0) 
+        model.export(format='engine', half=True) 
     
     model = YOLO(engine_path)
 
