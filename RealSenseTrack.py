@@ -6,68 +6,53 @@ import time
 import os
 import json 
 
-
-# --- CAMERA/YOLO CONFIG ---
+# --- CONFIGURATION ---
 OUTPUT_DIR = 'realsense_recordings'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-ENGINE_PATH = 'yolo11x-pose.engine' # Define the expected engine file name
 DEPTH_DIR = os.path.join(OUTPUT_DIR, "depth_maps")
 os.makedirs(DEPTH_DIR, exist_ok=True)
 
+ENGINE_PATH = 'yolo11x-pose.engine' 
+W, H = 640, 480
+TARGET_FPS = 29.97
+FRAME_DURATION = 1.0 / TARGET_FPS 
+CONFIDENCE_THRESHOLD = 0.1
+
+# --- MODEL LOADING ---
 if not os.path.exists(ENGINE_PATH):
-    print(f"Engine file not found. Exporting to {ENGINE_PATH}...")
-    # This line creates the engine file
+    print(f"Exporting engine...")
     model = YOLO('yolo11x-pose.pt')
     model.export(format='engine', half=True)
 else:
-    print(f"Loading existing engine: {ENGINE_PATH}")
-    # This line loads the optimized engine file directly
     model = YOLO(ENGINE_PATH)
 
-W, H = 640, 480
-FPS = 30
-CONFIDENCE_THRESHOLD = 0.1
+# --- VIDEO WRITER CONFIG ---
+video_path = os.path.join(OUTPUT_DIR, "skeleton_tracking_output.mp4")
+fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
+out = cv2.VideoWriter(video_path, fourcc, TARGET_FPS, (W, H))
 
-# Start the RealSense pipeline
+# --- REALSENSE SETUP ---
 pipeline = rs.pipeline()
 config = rs.config()
-
-# Configure streams 
-config.enable_stream(rs.stream.depth, W, H, rs.format.z16, FPS) 
-config.enable_stream(rs.stream.color, W, H, rs.format.bgr8, FPS)
-
-# Start streaming and get profile
+config.enable_stream(rs.stream.depth, W, H, rs.format.z16, 30) 
+config.enable_stream(rs.stream.color, W, H, rs.format.bgr8, 30)
 profile = pipeline.start(config)
 
-# Get the intrinsic parameters (K matrix) for the COLOR stream
 color_intrinsics = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
-fx = color_intrinsics.fx
-fy = color_intrinsics.fy
-cx = color_intrinsics.ppx
-cy = color_intrinsics.ppy
+fx, fy, cx, cy = color_intrinsics.fx, color_intrinsics.fy, color_intrinsics.ppx, color_intrinsics.ppy
+align = rs.align(rs.stream.color)
 
-print(f"RealSense Intrinsics loaded: fx={fx:.2f}, fy={fy:.2f}, cx={cx:.2f}, cy={cy:.2f}")
-
-# Create an align object for mapping Depth to Color pixels
-align_to = rs.stream.color
-align = rs.align(align_to)
-
-# --- JSON DATA COLLECTOR ---
 all_pose_data_for_json = []
 
 try:
     frame_index = 0
+    print(f"Recording/Processing started at {TARGET_FPS} FPS...")
+    
     while True:
-        start_time = time.time()
+        start_time = time.perf_counter() # Precision timing for 5080
         
-        # 1. CAPTURE AND ALIGN FRAME-SET
         frames = pipeline.wait_for_frames(10000)
-        
-        # Get frame timestamp immediately after capture
-        # RealSense timestamp is in milliseconds since the epoch, convert to seconds
         frame_timestamp = frames.get_timestamp() / 1000.0 
-        
         aligned_frames = align.process(frames)
         
         depth_frame = aligned_frames.get_depth_frame()
@@ -78,67 +63,39 @@ try:
         color_image = np.asanyarray(color_frame.get_data())
         depth_image = np.asanyarray(depth_frame.get_data())
         
-        # 2. SAVE RAW DEPTH MAP
-        depth_filename = os.path.join(OUTPUT_DIR, f"depth_frame_{frame_index:05d}.png")
+        # 1. Save Raw Depth PNG (Capability from RealSenseTrack)
+        depth_filename = os.path.join(DEPTH_DIR, f"depth_{frame_index:05d}.png")
         cv2.imwrite(depth_filename, depth_image)
 
-        # 3. YOLOv8 2D POSE ESTIMATION
+        # 2. YOLO Inference
         results = model.predict(source=color_image, verbose=False)
-        
-        frame_detections = [] # Holds 3D data for all people in this frame
+        frame_detections = [] 
 
-        # Check for detections
-        if not results or results[0].keypoints.data.numel() == 0:
-            frame_index += 1
-            continue
-            
-        result = results[0] # All persons are in this single result object
+        if results and results[0].keypoints.data.numel() > 0:
+            result = results[0]
+            color_image = result.plot() # Draw skeletons for video
 
-        # 4. PROCESS DETECTIONS AND PERFORM 3D CONVERSION (Multi-person handling)
-        for pid, keypoint_data in enumerate(result.keypoints.data):
-            
-            # keypoint_data has shape (17, 3) -> [u, v, confidence] for one person
-            person_3d_keypoints = [] 
-
-            # Loop over the 17 keypoints for the current person
-            for kp in keypoint_data:
-                u, v = int(kp[0]), int(kp[1])
-                confidence = float(kp[2])
-
-                # --- NEW/IMPROVED LOGIC START ---
-                
-                # 1. Check Confidence
-                if confidence >= CONFIDENCE_THRESHOLD:
-                    
-                    # 2. Check 2D Bounds
-                    if 0 <= v < H and 0 <= u < W:
+            for pid, keypoint_data in enumerate(result.keypoints.data):
+                person_3d_keypoints = [] 
+                for kp in keypoint_data:
+                    u, v, conf = int(kp[0]), int(kp[1]), float(kp[2])
+                    if conf >= CONFIDENCE_THRESHOLD and 0 <= v < H and 0 <= u < W:
                         Z_mm = depth_image[v, u]
-                        
-                        # 3. Check Depth Validity
                         if Z_mm > 0:
-                            # SUCCESS: Calculate 3D point
                             Z = Z_mm / 1000.0
-                            X_m = (u - cx) * (Z / fx)
-                            Y_m = (v - cy) * (Z / fy)
-                            
-                            # Append valid 3D coordinates
-                            person_3d_keypoints.append([float(X_m), float(Y_m), float(Z), confidence])
-                            continue # Skip the fallback
+                            X = (u - cx) * (Z / fx)
+                            Y = (v - cy) * (Z / fy)
+                            person_3d_keypoints.append([X, Y, Z, conf])
+                            continue
+                    person_3d_keypoints.append([None, None, None, conf])
 
-                # FALLBACK: Confidence too low, out of bounds, or invalid depth (Z=0).
-                # Append placeholder to preserve the 17-point fixed structure.
-                person_3d_keypoints.append([None, None, None, confidence])
-                # --- NEW/IMPROVED LOGIC END ---
-
-            
-            # Only append the detection if we have 17 points (which we now always do)
-            if len(person_3d_keypoints) == 17:
-                frame_detections.append({
-                    "person_id": pid, # Index order from YOLO output
-                    "keypoints_3d_m": person_3d_keypoints
-                })
+                if len(person_3d_keypoints) == 17:
+                    frame_detections.append({"person_id": pid, "keypoints_3d_m": person_3d_keypoints})
         
-        # 6. COLLECT FRAME DATA FOR JSON
+        # 3. Save Frame to Video (Capability from VideoTest)
+        out.write(color_image)
+
+        # 4. Data Collection
         if frame_detections:
             all_pose_data_for_json.append({
                 "frame_index": frame_index,
@@ -146,29 +103,27 @@ try:
                 "detections": frame_detections 
             })
         
+        # Visual Overlay
+        cv2.putText(color_image, f"CAP: {TARGET_FPS} | Frame: {frame_index}", 
+                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        cv2.imshow("RealSense Tracking Plus", color_image)
+        
         frame_index += 1
         
-        # --- Visualization ---
-        color_image = result.plot() 
+        # --- FPS CAPPER ---
+        elapsed = time.perf_counter() - start_time
+        sleep_time = FRAME_DURATION - elapsed
+        if sleep_time > 0:
+            time.sleep(sleep_time)
 
-        fps = 1.0 / (time.time() - start_time)
-        cv2.putText(color_image, f"Frames: {frame_index} | FPS: {fps:.2f}", 
-                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        
-        cv2.imshow("Live Pose Estimation (D455f)", color_image)
-        
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
 finally:
-    # 7. STOP STREAMING AND SAVE FINAL JSON
     pipeline.stop()
+    out.release() 
     cv2.destroyAllWindows()
     
-    json_output_path = os.path.join(OUTPUT_DIR, "3d_pose_reconstruction.json")
-    with open(json_output_path, 'w') as f:
+    with open(os.path.join(OUTPUT_DIR, "3d_pose_data.json"), 'w') as f:
         json.dump(all_pose_data_for_json, f, indent=4)
-
-    print(f"\nLive 3D processing stopped after {frame_index} frames.")
-    print(f"Raw depth maps saved to: {OUTPUT_DIR}")
-    print(f"Final 3D pose data saved to: {json_output_path}")
+    print(f"Data saved to {OUTPUT_DIR}")
