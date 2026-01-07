@@ -5,6 +5,7 @@ from ultralytics import YOLO
 import time
 import os
 import json 
+import torch
 
 # --- CONFIGURATION ---
 OUTPUT_DIR = 'realsense_recordings'
@@ -20,11 +21,16 @@ CONFIDENCE_THRESHOLD = 0.1
 
 # --- MODEL LOADING ---
 if not os.path.exists(ENGINE_PATH):
-    print(f"Exporting engine...")
-    model = YOLO('yolo11x-pose.pt')
-    model.export(format='engine', half=True)
+    if not torch.cuda.is_available():
+        print('Swapping to Cpu, NO GPU detected')
+        model = YOLO('yolo11n-pose.pt')
+    else:
+        print(f"Exporting engine...")
+        model = YOLO('yolo11x-pose.pt')
+        model.export(format='engine', half=True)
 else:
     model = YOLO(ENGINE_PATH)
+    
 
 # --- VIDEO WRITER CONFIG ---
 video_path = os.path.join(OUTPUT_DIR, "skeleton_tracking_output.mp4")
