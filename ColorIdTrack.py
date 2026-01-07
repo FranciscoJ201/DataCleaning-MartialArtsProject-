@@ -23,10 +23,17 @@ def start_tracking(hsv_target, sensitivity):
         if contours:
             largest = max(contours, key=cv2.contourArea)
             if cv2.contourArea(largest) > 500:
-                M = cv2.moments(largest)
-                if M["m00"] != 0:
-                    cX, cY = int(M["m10"]/M["m00"]), int(M["m01"]/M["m00"])
-                    cv2.circle(frame, (cX, cY), 10, (0, 0, 255), -1)
+                # --- CHANGED LOGIC START ---
+                # Get the coordinates for the bounding box
+                x, y, w, h = cv2.boundingRect(largest)
+                
+                # Draw the rectangle: (image, start_point, end_point, color, thickness)
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                
+                # Optional: Add a label above the box
+                cv2.putText(frame, "Largest Instance", (x, y - 10), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                # --- CHANGED LOGIC END ---
 
         cv2.imshow("Tracking", frame)
         cv2.imshow("Mask", mask)
@@ -35,22 +42,18 @@ def start_tracking(hsv_target, sensitivity):
     cap.release()
     cv2.destroyAllWindows()
 
+# ... (The rest of your ColorPickerGUI class and __main__ remain exactly the same)
 class ColorPickerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Settings")
         self.selected_hsv = None
-
-        # Color Button
         self.color_btn = tk.Button(root, text="1. Pick Color", command=self.pick_color)
         self.color_btn.pack(pady=10)
-
-        # Sensitivity Slider (Low threshold = High value)
         tk.Label(root, text="2. Adjust Sensitivity (Threshold)").pack()
         self.sens_slider = tk.Scale(root, from_=5, to=50, orient="horizontal")
-        self.sens_slider.set(20) # Default
+        self.sens_slider.set(20)
         self.sens_slider.pack(pady=10)
-
         self.ready_btn = tk.Button(root, text="READY", state="disabled", command=self.finish_gui)
         self.ready_btn.pack(pady=10)
 
