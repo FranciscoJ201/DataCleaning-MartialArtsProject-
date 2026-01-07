@@ -536,7 +536,7 @@ class MultiPose3DPlayer:
 
 
 if __name__ == '__main__':
-    JSON_FILE_PATH = '/Users/franciscojimenez/Desktop/realsense_output1/3d_pose_reconstruction.json'
+    JSON_FILE_PATH = 'realsense_field_recordings\processed_3d_data.json'
     
     print("Keypoint Indices for reference:")
     print("------------------------------")
