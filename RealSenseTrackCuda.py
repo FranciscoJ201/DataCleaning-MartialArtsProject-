@@ -14,7 +14,7 @@ DEPTH_DIR = os.path.join(OUTPUT_DIR, "depth_maps")
 os.makedirs(DEPTH_DIR, exist_ok=True)
 
 ENGINE_PATH = 'yolo11x-pose.engine' 
-W, H = 640, 480
+W, H = 1280, 720
 TARGET_FPS = 29.97
 FRAME_DURATION = 1.0 / TARGET_FPS 
 CONFIDENCE_THRESHOLD = 0.1
