@@ -11,8 +11,28 @@ def start_tracking(hsv_target, sensitivity):
     
     back_sub = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=25, detectShadows=True)
 
-    lower_bound = np.array([max(0, hsv_target[0] - sensitivity), 50, 50])
-    upper_bound = np.array([min(179, hsv_target[0] + sensitivity), 255, 255])
+    # Replace the lower/upper bound logic with this for better black tracking
+    # CASE A: Tracking White (Low Saturation + High Brightness)
+    if hsv_target[1] < 50 and hsv_target[2] > 200:
+        lower_bound = np.array([0, 0, 200])
+        upper_bound = np.array([179, 60, 255])
+        print("Mode: Tracking White")
+
+    # CASE B: Tracking Black (Very Low Brightness)
+    elif hsv_target[2] < 50:
+        lower_bound = np.array([0, 0, 0])
+        upper_bound = np.array([179, 255, 75])
+        print("Mode: Tracking Black")
+
+    # CASE C: Tracking Regular Colors (The original logic)
+    else:
+        lower_bound = np.array([max(0, hsv_target[0] - sensitivity), 50, 50])
+        upper_bound = np.array([min(179, hsv_target[0] + sensitivity), 255, 255])
+        print("Mode: Tracking Color")
+
+
+
+        
 
     while True:
         ret, frame = cap.read()
@@ -22,7 +42,9 @@ def start_tracking(hsv_target, sensitivity):
         fg_mask = back_sub.apply(frame)
         
         # 3. Apply Color Filtering
-        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        #to get rid of blurred frame replace blurred frame with just frame variable
+        blurred_frame = cv2.GaussianBlur(frame,(21,21),0)
+        hsv_frame = cv2.cvtColor(blurred_frame, cv2.COLOR_BGR2HSV)
         color_mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
         
         # 4. COMBINE THEM: Pixel must be moving AND the right color
