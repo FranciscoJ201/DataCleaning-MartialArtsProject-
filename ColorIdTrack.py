@@ -7,7 +7,10 @@ import colorsys
 def start_tracking(hsv_target, sensitivity):
     cap = cv2.VideoCapture(0)
     
-    # Apply the sensitivity from the slider to the Hue range
+    # 1. Initialize the Background Subtractor (MOG2)
+    
+    back_sub = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=25, detectShadows=True)
+
     lower_bound = np.array([max(0, hsv_target[0] - sensitivity), 50, 50])
     upper_bound = np.array([min(179, hsv_target[0] + sensitivity), 255, 255])
 
@@ -15,34 +18,42 @@ def start_tracking(hsv_target, sensitivity):
         ret, frame = cap.read()
         if not ret: break
 
-        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
+        # 2. Apply Background Subtraction to find motion
+        fg_mask = back_sub.apply(frame)
         
-        # Tracking logic
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # 3. Apply Color Filtering
+        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        color_mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
+        
+        # 4. COMBINE THEM: Pixel must be moving AND the right color
+        # This removes stationary objects (chairs, walls) of the same color
+        combined_mask = cv2.bitwise_and(color_mask, fg_mask)
+        
+        # 5. Clean up noise (Morphological opening)
+        kernel = np.ones((5,5), np.uint8)
+        combined_mask = cv2.morphologyEx(combined_mask, cv2.MORPH_OPEN, kernel)
+
+        # 6. Tracking logic on the combined mask
+        contours, _ = cv2.findContours(combined_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
         if contours:
             largest = max(contours, key=cv2.contourArea)
-            if cv2.contourArea(largest) > 500:
-                # --- CHANGED LOGIC START ---
-                # Get the coordinates for the bounding box
+            if cv2.contourArea(largest) > 1000: 
                 x, y, w, h = cv2.boundingRect(largest)
-                
-                # Draw the rectangle: (image, start_point, end_point, color, thickness)
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                
-                # Optional: Add a label above the box
-                cv2.putText(frame, "Largest Instance", (x, y - 10), 
+                cv2.putText(frame, "Moving Target", (x, y - 10), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                # --- CHANGED LOGIC END ---
 
-        cv2.imshow("Tracking", frame)
-        cv2.imshow("Mask", mask)
+        cv2.imshow("Tracking (Motion + Color)", frame)
+        cv2.imshow("Motion Mask", fg_mask)
+        cv2.imshow("Combined Mask", combined_mask)
+        
         if cv2.waitKey(1) == ord('q'): break
 
     cap.release()
     cv2.destroyAllWindows()
 
-# ... (The rest of your ColorPickerGUI class and __main__ remain exactly the same)
+
 class ColorPickerGUI:
     def __init__(self, root):
         self.root = root
