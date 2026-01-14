@@ -3,16 +3,27 @@ import numpy as np
 import json
 import os
 from ultralytics import YOLO
+import torch
 
+ENGINE_PATH = 'yolo11x-pose.engine'
 # --- CONFIGURATION ---
-INPUT_DIR = 'realsense_field_recordings'
+INPUT_DIR = 'c:/Users/vrspr/OneDrive/Desktop/realsense_field_recordings'
 DEPTH_DIR = os.path.join(INPUT_DIR, "depth_maps")
 VIDEO_PATH = os.path.join(INPUT_DIR, 'final_sync_output.mp4')
 INTRINSICS_PATH = os.path.join(INPUT_DIR, 'camera_intrinsics.json')
 OUTPUT_JSON = os.path.join(INPUT_DIR, 'processed_3d_data.json')
 
-# Load Model
-model = YOLO('yolo11x-pose.pt') 
+if not os.path.exists(ENGINE_PATH):
+    if not torch.cuda.is_available():
+        print('Swapping to Cpu, NO GPU detected')
+        model = YOLO('yolo11n-pose.pt')
+    else:
+        print(f"Exporting engine...")
+        model = YOLO('yolo11x-pose.pt')
+        model.export(format='engine', half=True)
+else:
+    model = YOLO(ENGINE_PATH)
+    
 
 # Load Camera Settings
 if not os.path.exists(INTRINSICS_PATH):
