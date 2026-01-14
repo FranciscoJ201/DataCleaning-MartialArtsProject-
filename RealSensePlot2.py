@@ -536,7 +536,7 @@ class MultiPose3DPlayer:
 
 
 if __name__ == '__main__':
-    JSON_FILE_PATH = 'realsense_field_recordings\processed_3d_data.json'
+    JSON_FILE_PATH = '/Users/franciscojimenez/Desktop/RecordingsFrom8to10/nybbc/3d_pose_data.json'
     
     print("Keypoint Indices for reference:")
     print("------------------------------")
@@ -548,6 +548,6 @@ if __name__ == '__main__':
     player = MultiPose3DPlayer(
         json_path=JSON_FILE_PATH,
         edges=SKELETON_EDGES,
-        fps=25
+        fps=15
     )
     player.run()
